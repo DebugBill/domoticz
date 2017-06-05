@@ -468,9 +468,6 @@
     <Filter Include="Devices\RTL_433">
       <UniqueIdentifier>{0e8b8072-43d4-44a2-b5de-8a4eb7887d1c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Devices\OnkyoAVTCP">
-      <UniqueIdentifier>{64b3714e-88ea-41cb-99ee-398abbc7acb1}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\CMakeLists.txt">
@@ -2026,9 +2023,6 @@
     <ClInclude Include="..\main\EventsPythonModule.h">
       <Filter>EventSystem</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\OnkyoAVTCP.h">
-      <Filter>Devices\OnkyoAVTCP</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\webserver\Base64.cpp">
@@ -2708,9 +2702,6 @@
     </ClCompile>
     <ClCompile Include="..\main\EventsPythonModule.cpp">
       <Filter>EventSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\OnkyoAVTCP.cpp">
-      <Filter>Devices\OnkyoAVTCP</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -3599,6 +3590,9 @@
       <Filter>www\images</Filter>
     </Image>
     <Image Include="..\www\images\Water.png">
+      <Filter>www\images</Filter>
+    </Image>
+    <Image Include="..\www\images\Water48.png">
       <Filter>www\images</Filter>
     </Image>
     <Image Include="..\www\images\Water48_Off.png">

@@ -124,7 +124,6 @@
 #include "../hardware/RelayNet.h"
 #include "../hardware/SysfsGpio.h"
 #include "../hardware/Rtl433.h"
-#include "../hardware/OnkyoAVTCP.h"
 
 // load notifications configuration
 #include "../notifications/NotificationHelper.h"
@@ -999,9 +998,6 @@ bool MainWorker::AddHardwareFromParams(
 		break;
 	case HTYPE_Rtl433:
 		pHardware = new CRtl433(ID);
-		break;
-	case HTYPE_OnkyoAVTCP:
-		pHardware = new OnkyoAVTCP(ID, Address, Port);
 		break;
 	}
 
@@ -12672,17 +12668,18 @@ void MainWorker::HandleLogNotifications()
 
 	std::stringstream sstr;
 	std::list<CLogger::_tLogLineStruct>::const_iterator itt;
-	std::string sTopic;
+	std::string sTopic, sTitle;
 
+	m_sql.GetPreferencesVar("Title", sTitle);
 	if (_loglines.size() > 1)
 	{
-		sTopic = "Domoticz: Multiple errors received in the last 5 minutes";
+		sTopic = sTitle + ": Multiple errors received in the last 5 minutes";
 		sstr << "Multiple errors received in the last 5 minutes:<br><br>";
 	}
 	else
 	{
 		itt = _loglines.begin();
-		sTopic = "Domoticz: " + itt->logmessage;
+		sTopic = sTitle + ": " + itt->logmessage;
 	}
 
 	for (itt = _loglines.begin(); itt != _loglines.end(); ++itt)
