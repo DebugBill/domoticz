@@ -124,6 +124,7 @@
 #include "../hardware/RelayNet.h"
 #include "../hardware/SysfsGpio.h"
 #include "../hardware/Rtl433.h"
+#include "../hardware/OnkyoAVTCP.h"
 
 // load notifications configuration
 #include "../notifications/NotificationHelper.h"
@@ -997,6 +998,9 @@ bool MainWorker::AddHardwareFromParams(
 		break;
 	case HTYPE_Rtl433:
 		pHardware = new CRtl433(ID);
+		break;
+	case HTYPE_OnkyoAVTCP:
+		pHardware = new OnkyoAVTCP(ID, Address, Port);
 		break;
 	}
 
@@ -12672,7 +12676,7 @@ void MainWorker::HandleLogNotifications()
 	std::string sTopic, sTitle;
 
 	m_sql.GetPreferencesVar("Title", sTitle);
-	if (_loglines.size() > 1)
+        if (_loglines.size() > 1)
 	{
 		sTopic = sTitle + ": Multiple errors received in the last 5 minutes";
 		sstr << "Multiple errors received in the last 5 minutes:<br><br>";
