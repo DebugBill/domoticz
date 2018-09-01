@@ -298,16 +298,21 @@ define(['app'], function (app) {
 							}
 							if (
 								(item.Type.indexOf("Light") == 0) ||
+                                (item.Type.indexOf("Color Switch") == 0) ||
 								(item.Type.indexOf("Chime") == 0) ||
 								(item.Type.indexOf("Security") == 0) ||
 								(item.Type.indexOf("RFY") == 0) ||
 								(item.Type.indexOf("ASA") == 0) ||
 								(item.Type.indexOf("Blinds") == 0)
 							) {
-								itemSubIcons += '&nbsp;<img src="images/log.png" title="' + $.t('Log') + '" onclick="ShowLightLog(' + item.idx + ',\'' + escape(item.Name) + '\', \'#devicescontent\', \'ShowDevices\');">';
+								itemSubIcons += '&nbsp;<a href="#/Devices/'+ item.idx +'/LightLog"><img src="images/log.png" title="' + $.t('Log') + '"></a>';
 							}
 							else if ((item.Type.indexOf("Temp") == 0) || (item.Type.indexOf("Thermostat") == 0) || (item.Type.indexOf("Humidity") == 0)) {
+<<<<<<< HEAD
 								itemSubIcons += '&nbsp;<img src="images/log.png" title="' + $.t('Log') + '" onclick="ShowTempLog(\'#devicescontent\',\'ShowDevices\',' + item.idx + ',\'' + escape(item.Name) + '\');">';
+=======
+								itemSubIcons += '&nbsp;<a href="#Devices/'+item.idx+'/TemperatureLog"><img src="images/log.png" title="' + $.t('Log') + '"></a>';
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 							}
 							else if (item.SubType == "Voltage") {
 								itemSubIcons += '&nbsp;<img src="images/log.png" title="' + $.t('Log') + '" onclick="ShowGeneralGraph(\'#devicescontent\',\'ShowDevices\',' + item.idx + ',\'' + escape(item.Name) + '\',' + item.SwitchTypeVal + ', \'VoltageGeneral\');">';
@@ -375,7 +380,8 @@ define(['app'], function (app) {
 								itemSubIcons += '&nbsp;<img src="images/log.png" title="' + $.t('Log') + '" onclick="ShowBaroLog(\'#devicescontent\',\'ShowDevices\',' + item.idx + ',\'' + escape(item.Name) + '\');">';
 							}
 							else if ((item.SubType == "Text") || (item.SubType == "Alert")) {
-								itemSubIcons += '&nbsp;<img src="images/log.png" title="' + $.t('Log') + '" onclick="ShowTextLog(\'#devicescontent\',\'ShowDevices\',' + item.idx + ',\'' + escape(item.Name) + '\');">';
+                                var logLink = '#/Devices/' + item.idx + '/TextLog';
+								itemSubIcons += '&nbsp;<a href="' + logLink + '"><img src="images/log.png" title="' + $.t('Log') + '"></a>';
 							}
 							else if ((item.SubType == "Soil Moisture") || (item.SubType == "Leaf Wetness") || (item.SubType == "Waterflow")) {
 								itemSubIcons += '&nbsp;<img src="images/log.png" title="' + $.t('Log') + '" onclick="ShowGeneralGraph(\'#devicescontent\',\'ShowDevices\',' + item.idx + ',\'' + escape(item.Name) + '\',' + item.SwitchTypeVal + ', \'' + item.SubType + '\');">';
@@ -384,6 +390,15 @@ define(['app'], function (app) {
 								itemSubIcons += '&nbsp;<img src="images/empty16.png">';
 							}
 							var ID = item.ID;
+              if (typeof(item.HardwareTypeVal) != 'undefined' && item.HardwareTypeVal == 21) {
+                var ZWID = item.ID.substr(-4, 2);
+                if (ZWID == '00') {
+                  ZWID = item.ID.substr(-2, 2);
+                }
+                ZWID = '0x' + ZWID;
+                var ZWIDdec =  ("00" + parseInt(ZWID)).slice(-3);
+                item.HardwareName = item.HardwareName + " " + ZWIDdec + ' (' + ZWID + ')';
+              }
 							if (item.Type == "Lighting 1") {
 								ID = String.fromCharCode(item.ID);
 							}

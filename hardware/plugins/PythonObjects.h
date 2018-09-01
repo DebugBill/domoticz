@@ -101,6 +101,12 @@ namespace Plugins {
 		int			Image;
 		PyObject*	Options;
 		int			Used;
+<<<<<<< HEAD
+=======
+		int			TimedOut;
+		PyObject*	Description;
+		PyObject*	Color;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		CPlugin*	pPlugin;
 	} CDevice;
 
@@ -124,10 +130,17 @@ namespace Plugins {
 		{ "Image", T_INT, offsetof(CDevice, Image), READONLY, "Numeric image number" },
 		{ "Type", T_INT, offsetof(CDevice, Type), READONLY, "Numeric device type" },
 		{ "SubType", T_INT, offsetof(CDevice, SubType), READONLY, "Numeric device subtype" },
+		{ "SwitchType", T_INT, offsetof(CDevice, SwitchType), READONLY, "Numeric device switchtype" },
 		{ "LastLevel", T_INT, offsetof(CDevice, LastLevel), READONLY, "Previous device level" },
 		{ "LastUpdate", T_OBJECT, offsetof(CDevice, LastUpdate), READONLY, "Last update timestamp" },
 		{ "Options", T_OBJECT, offsetof(CDevice, Options), READONLY, "Device options" },
 		{ "Used", T_INT, offsetof(CDevice, Used), READONLY, "Numeric device Used flag" },
+<<<<<<< HEAD
+=======
+		{ "TimedOut", T_INT, offsetof(CDevice, TimedOut), READONLY, "Is the device marked as timed out" },
+		{ "Description", T_OBJECT, offsetof(CDevice, Description), READONLY, "Description" },
+		{ "Color", T_OBJECT, offsetof(CDevice, Color), READONLY, "Color JSON dictionary" },
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		{ NULL }  /* Sentinel */
 	};
 

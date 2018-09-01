@@ -189,6 +189,10 @@ height:100%;
 
 /* Button Style 2 */
 
+a.btn {
+	text-decoration: none;
+}
+
 .button-style2 a {
 	display: inline-block;
 	height: 2.60em;
@@ -277,6 +281,7 @@ height:100%;
 	height: 2.00em;
 	padding: 0em 1.25em 0em 1.25em;
 	background: url(images/img03b.jpg) repeat right top;
+	border: none;
 	border-radius: 5px;
 	line-height: 2.00em;
 	text-decoration: none;
@@ -287,11 +292,13 @@ height:100%;
 	cursor: pointer;
 }
 
+.btnstyle3:disabled,
 .btnstyle3-dis {
 	display: inline-block;
 	height: 2.00em;
 	padding: 0em 1.25em 0em 1.25em;
 	background: url(images/img03bd.png) repeat right top;
+	border: none;
 	border-radius: 5px;
 	line-height: 2.00em;
 	text-decoration: none;
@@ -1763,8 +1770,13 @@ html,body{
 		position:relative;
 }
 .bannercontent {
+<<<<<<< HEAD
 		padding-top: 60px;
 		padding-bottom: 22px;
+=======
+	padding-top: 26px;
+	padding-bottom: 22px;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 }
 #copyright {
 	position: absolute;
@@ -2201,6 +2213,44 @@ table.dataTable img.vflip {
   -webkit-transform: rotate(180deg);
       -ms-transform: rotate(180deg);
           transform: rotate(180deg);
+}
+
+table.table-details {
+	border: 0;
+	border-spacing: 20px;
+	padding: 0;
+}
+
+.entity-log-table {
+	border: 0;
+	border-spacing: 0;
+	padding: 0;
+}
+
+.entity-log-table th:first-child {
+	width: 140px;
+}
+
+.settings-form {
+	border: 0;
+	border-spacing: 20px;
+	padding: 0;
+}
+
+.settings-form > tbody > tr > td:first-child {
+	width: 80px;
+	text-align: right;
+}
+
+table.table-details > tr > td:first-child,
+table.table-details > tbody > tr > td:first-child {
+	width: 120px;
+	text-align: right;
+}
+
+table.table-details.table-details-lg > tr > td:first-child,
+table.table-details.table-details-lg > tbody > tr > td:first-child {
+	width: 160px;
 }
 
 .messagepop {
@@ -2782,3 +2832,11 @@ tspan{
 	font-size: 0.9em;
 }
 
+<<<<<<< HEAD
+=======
+#rgbw_popup .dimslider, #rgbw_popup .dimslider .white_slider{
+   width: calc(100% - 38px) !important;
+   margin-left: 6px !important;
+   margin-top: 10px !important;       
+}
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1

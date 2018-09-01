@@ -19,6 +19,12 @@ namespace http {
 			AUTH_LOGIN=0,
 			AUTH_BASIC,
 		};
+		enum _eWebCompressionMode
+		{
+			WWW_USE_GZIP=0,
+			WWW_USE_STATIC_GZ_FILES,
+			WWW_FORCE_NO_GZIP_SUPPORT
+		};
 		typedef struct _tWebUserPassword
 		{
 			unsigned long ID;
@@ -117,7 +123,7 @@ namespace http {
 				{}
 
 			/// Handle a request and produce a reply.
-			virtual void handle_request(const request& req, reply& rep);
+			virtual void handle_request(const request& req, reply& rep) override;
 		private:
 			char *strftime_t(const char *format, const time_t rawtime);
 			bool CompressWebOutput(const request& req, reply& rep);
@@ -200,6 +206,11 @@ namespace http {
 			std::string m_DigistRealm;
 			void SetZipPassword(std::string password);
 
+			//IPs that are allowed to pass proxy headers
+			std::vector < std::string > myRemoteProxyIPs;
+			void AddRemoteProxyIPs(const std::string &ipaddr);
+			void ClearRemoteProxyIPs();
+
 			// Session store manager
 			void SetSessionStore(session_store_impl_ptr sessionStore);
 			session_store_impl_ptr GetSessionStore();
@@ -215,6 +226,14 @@ namespace http {
 			//Whitelist url strings that bypass authentication checks (not used by basic-auth authentication)
 			std::vector < std::string > myWhitelistURLs;
 			server_settings m_settings;
+<<<<<<< HEAD
+=======
+			// actual theme selected
+			std::string m_actTheme;
+
+			void SetWebCompressionMode(const _eWebCompressionMode gzmode);
+			_eWebCompressionMode m_gzipmode;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		private:
 			/// store map between include codes and application functions
 			std::map < std::string, webem_include_function > myIncludes;

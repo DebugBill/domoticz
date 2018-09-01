@@ -27,6 +27,7 @@ enum _eSwitchType
 	STYPE_Media,					//17
 	STYPE_Selector,					//18
 	STYPE_DoorLock,					//19
+	STYPE_DoorLockInverted,					//20
 	STYPE_END
 };
 
@@ -186,6 +187,21 @@ enum _eHardwareTypes {
 	HTYPE_SysfsGpio,			//102
 	HTYPE_Rtl433,                           //103
 	HTYPE_OnkyoAVTCP,			//104
+<<<<<<< HEAD
+=======
+	HTYPE_DenkoviSmartdenIPInOut,	//105
+	HTYPE_EVOHOME_TCP,			//106
+	HTYPE_USBtinGateway,		//107
+	HTYPE_EnphaseAPI,			//108
+	HTYPE_RaspberryMCP23017,	//109
+	HTYPE_eHouseTCP,			//110
+	HTYPE_Comm5SMTCP,			//111
+	HTYPE_Nest_OAuthAPI,		//112
+	HTYPE_EcoCompteur,			//113
+	HTYPE_Honeywell,			//114
+	HTYPE_Tado,					//115
+	HTYPE_DenkoviDevices,		//116
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	HTYPE_END
 };
 
@@ -273,4 +289,5 @@ bool GetLightCommand(
 bool IsLightSwitchOn(const std::string &lstatus);
 
 bool IsSerialDevice(const _eHardwareTypes htype);
+bool IsNetworkDevice(const _eHardwareTypes htype);
 void ConvertToGeneralSwitchType(std::string &devid, int &dtype, int &subtype);

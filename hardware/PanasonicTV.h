@@ -5,10 +5,10 @@
 #include "../main/localtime_r.h"
 #include <string>
 #include <vector>
-#include "../json/json.h"
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 
+<<<<<<< HEAD
 #define SSTR( x ) dynamic_cast< std::ostringstream & >(( std::ostringstream() << std::dec << x ) ).str()
 
 class CPanasonicNode //: public boost::enable_shared_from_this<CPanasonicNode>
@@ -101,6 +101,9 @@ private:
 		return (*p == 0);
 	}
 };
+=======
+class CPanasonicNode;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 class CPanasonic : public CDomoticzHardwareBase
 {
@@ -108,7 +111,7 @@ public:
 	CPanasonic(const int ID, const int PollIntervalsec, const int PingTimeoutms);
 	explicit CPanasonic(const int ID);
 	~CPanasonic(void);
-	bool WriteToHardware(const char *pdata, const unsigned char length);
+	bool WriteToHardware(const char *pdata, const unsigned char length) override;
 	void AddNode(const std::string &Name, const std::string &IPAddress, const int Port);
 	bool UpdateNode(const int ID, const std::string &Name, const std::string &IPAddress, const int Port);
 	void RemoveNode(const int ID);
@@ -120,14 +123,13 @@ public:
 private:
 	void Do_Work();
 
-	bool StartHardware();
-	bool StopHardware();
+	bool StartHardware() override;
+	bool StopHardware() override;
 
 	void ReloadNodes();
 	void UnloadNodes();
-
+private:
 	static	std::vector<boost::shared_ptr<CPanasonicNode> > m_pNodes;
-
 	int m_iPollInterval;
 	int m_iPingTimeoutms;
 	boost::shared_ptr<boost::thread> m_thread;

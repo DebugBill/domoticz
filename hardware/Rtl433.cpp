@@ -160,7 +160,7 @@ void CRtl433::Do_Work()
 				// load field values into a map
 				std::map<std::string, std::string> data;
 				std::vector<std::string>::iterator h = headers.begin();
-				for (std::vector<std::string>::iterator vi = values.begin(); vi != values.end(); vi++)
+				for (std::vector<std::string>::iterator vi = values.begin(); vi != values.end(); ++vi)
 				{
 					std::string header = *(h++);
 					data[header] = *vi;
@@ -181,6 +181,19 @@ void CRtl433::Do_Work()
 				bool haspressure = false;
 				float rain;
 				bool hasrain = false;
+<<<<<<< HEAD
+=======
+				float depth_cm;
+				bool hasdepth_cm = false;
+				float depth;
+				bool hasdepth = false;
+				float wind_str;
+				bool haswind_str = false;
+				int wind_dir;
+				bool haswind_dir = false;
+				// attempt parsing field values
+				//atoi/f functions return 0 if string conv fails.
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 				// attempt parsing field values
 				try {
@@ -227,6 +240,7 @@ void CRtl433::Do_Work()
 						hastempC = true;
 					}
 				}
+<<<<<<< HEAD
 				catch (boost::bad_lexical_cast e) {
 				}
 				try {
@@ -235,6 +249,32 @@ void CRtl433::Do_Work()
 						humidity = boost::lexical_cast<int>(data["humidity"]);
 						hashumidity = true;
 					}
+=======
+
+				if (!data["humidity"].empty())
+ 				{
+					if (data["humidity"] == "HH")
+					{
+						humidity = 90;
+						hashumidity = true;
+					}
+					else if (data["humidity"] == "LL")
+					{
+						humidity = 10;
+						hashumidity = true;
+					}
+					else
+					{
+						humidity = atoi(data["humidity"].c_str());
+						hashumidity = true;
+					}
+				}
+
+				if (!data["pressure_hPa"].empty())
+				{
+					pressure = (float)atof(data["pressure_hPa"].c_str());
+					haspressure = true;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 				}
 				catch (boost::bad_lexical_cast e) {
 				}
@@ -256,6 +296,21 @@ void CRtl433::Do_Work()
 				}
 				catch (boost::bad_lexical_cast e) {
 				}
+<<<<<<< HEAD
+=======
+
+				if (!data["windstrength"].empty())
+				{
+					wind_str = (float)atof(data["windstrength"].c_str());
+					haswind_str = true;
+				}
+
+				if (!data["winddirection"].empty())
+				{
+					wind_dir = atoi(data["winddirection"].c_str());
+					haswind_dir = true;
+				}
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 				std::string model = data["model"];
 
@@ -279,8 +334,15 @@ void CRtl433::Do_Work()
 				}
 
 				unsigned int sensoridx = (id & 0xff) | ((channel & 0xff) << 8);
+
+				bool bValidTempHum = false;
+				if (hastempC && hashumidity)
+				{
+					bValidTempHum = !((tempC == 0) && (humidity == 0));
+				}
+				
 				bool bHaveSend = false;
-				if (hastempC && hashumidity && haspressure)
+				if (hastempC && hashumidity && haspressure && bValidTempHum)
 				{
 					int iForecast = 0;
 					SendTempHumBaroSensor(sensoridx,
@@ -292,7 +354,33 @@ void CRtl433::Do_Work()
 						model);
 					bHaveSend = true;
 				}
-				else if (hastempC && hashumidity)
+				else if (haswind_str && haswind_dir && hastempC)
+				{
+					SendWind(sensoridx,
+						batterylevel,
+						wind_dir,
+						wind_str,
+						0,
+						tempC,
+						0,
+						true,
+						model);
+					bHaveSend = true;
+				}
+				else if (haswind_str && haswind_dir && !hastempC)
+				{
+					SendWind(sensoridx,
+						batterylevel,
+						wind_dir,
+						wind_str,
+						0,
+						0,
+						0,
+						false,
+						model);
+					bHaveSend = true;
+				}
+				else if (hastempC && hashumidity && bValidTempHum)
 				{
 					SendTempHumSensor(sensoridx,
 						batterylevel,
@@ -326,10 +414,26 @@ void CRtl433::Do_Work()
 						model);
 					bHaveSend = true;
 				}
+<<<<<<< HEAD
+=======
+				if (hasdepth_cm)
+				{
+					SendDistanceSensor(sensoridx, unit,
+						batterylevel, depth_cm, model);
+					bHaveSend = true;
+				}
+				if (hasdepth)
+				{
+					SendDistanceSensor(sensoridx, unit,
+						batterylevel, depth, model);
+					bHaveSend = true;
+				}
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 				if (!bHaveSend)
 				{
-					_log.Log(LOG_STATUS, "Rtl433: Unhandled sensor type, please report: (%s)", line);
+					// this is also logged when parsed data is invalid
+					_log.Log(LOG_STATUS, "Rtl433: Unhandled sensor reading, please report: (%s)", line);
 				}
 			} else { //fgets
 			  break; // bail out, subprocess has failed

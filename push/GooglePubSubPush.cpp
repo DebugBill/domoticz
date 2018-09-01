@@ -51,7 +51,7 @@ void CGooglePubSubPush::Stop()
 
 void CGooglePubSubPush::UpdateActive()
 {
-	int fActive;
+	int fActive = 0;
 	m_sql.GetPreferencesVar("GooglePubSubActive", fActive);
 	m_bLinkActive = (fActive == 1);
 }
@@ -106,28 +106,28 @@ void CGooglePubSubPush::DoGooglePubSubPush()
 {
 	std::string googlePubSubData = "";
 
-	int googlePubSubDebugActiveInt;
+	int googlePubSubDebugActiveInt = 0;
 	bool googlePubSubDebugActive = false;
 	m_sql.GetPreferencesVar("GooglePubSubDebug", googlePubSubDebugActiveInt);
 	if (googlePubSubDebugActiveInt == 1) {
 		googlePubSubDebugActive = true;
 	}
 	std::vector<std::vector<std::string> > result;
-	result=m_sql.safe_query(
+	result = m_sql.safe_query(
 		"SELECT A.DeviceID, A.DelimitedValue, B.ID, B.Type, B.SubType, B.nValue, B.sValue, A.TargetType, A.TargetVariable, A.TargetDeviceID, A.TargetProperty, A.IncludeUnit, B.SwitchType, strftime('%%s', B.LastUpdate), B.Name FROM GooglePubSubLink as A, DeviceStatus as B "
 		"WHERE (A.DeviceID == '%" PRIu64 "' AND A.Enabled = '1' AND A.DeviceID==B.ID)",
 		m_DeviceRowIdx);
-	if (result.size()>0)
+	if (!result.empty())
 	{
 		std::string sendValue;
 		std::vector<std::vector<std::string> >::const_iterator itt;
-		for (itt=result.begin(); itt!=result.end(); ++itt)
+		for (itt = result.begin(); itt != result.end(); ++itt)
 		{
 			m_sql.GetPreferencesVar("GooglePubSubData", googlePubSubData);
 			if (googlePubSubData == "")
 				return;
 
-			std::vector<std::string> sd=*itt;
+			std::vector<std::string> sd = *itt;
 			unsigned int deviceId = atoi(sd[0].c_str());
 			std::string sdeviceId = sd[0].c_str();
 			std::string ldelpos = sd[1].c_str();
@@ -162,9 +162,15 @@ void CGooglePubSubPush::DoGooglePubSubPush()
 			sprintf(szLocalTime, "%llu", localTime);
 			char szLocalTimeUtc[16];
 			sprintf(szLocalTimeUtc, "%llu", localTimeUtc);
+<<<<<<< HEAD
 			char szLocalTimeMs[16];
 			sprintf(szLocalTimeMs, "%llu", localTime*1000);
 			char szLocalTimeUtcMs[16];
+=======
+			char szLocalTimeMs[21];
+			sprintf(szLocalTimeMs, "%llu", localTime * 1000);
+			char szLocalTimeUtcMs[21];
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			sprintf(szLocalTimeUtcMs, "%llu", localTimeUtc * 1000);
 
 			std::string llastUpdate = get_lastUpdate(localTimeUtc);
@@ -188,28 +194,37 @@ void CGooglePubSubPush::DoGooglePubSubPush()
 			*/
 
 			std::string lunit = getUnit(delpos, metertype);
-			std::string lType = RFX_Type_Desc(dType,1);
-			std::string lSubType = RFX_Type_SubType_Desc(dType,dSubType);
+			std::string lType = RFX_Type_Desc(dType, 1);
+			std::string lSubType = RFX_Type_SubType_Desc(dType, dSubType);
 
 			char hostname[256];
 			gethostname(hostname, sizeof(hostname));
 
 			std::vector<std::string> strarray;
-			if (sendValue.find(";")!=std::string::npos)
+			if (sendValue.find(";") != std::string::npos)
 			{
 				StringSplit(sendValue, ";", strarray);
-				if (int(strarray.size())>=delpos)
+				if (int(strarray.size()) >= delpos)
 				{
+<<<<<<< HEAD
 					std::string rawsendValue = strarray[delpos-1].c_str();
 					sendValue = ProcessSendValue(rawsendValue,delpos,nValue,false,metertype);
+=======
+					std::string rawsendValue = strarray[delpos - 1].c_str();
+					sendValue = ProcessSendValue(rawsendValue, delpos, nValue, false, dType, dSubType, metertype);
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 				}
 			}
 			else
 			{
+<<<<<<< HEAD
 				sendValue = ProcessSendValue(sendValue,delpos,nValue,false,metertype);
+=======
+				sendValue = ProcessSendValue(sendValue, delpos, nValue, false, dType, dSubType, metertype);
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			}
-			ltargetDeviceId+="_";
-			ltargetDeviceId+=ldelpos;
+			ltargetDeviceId += "_";
+			ltargetDeviceId += ldelpos;
 
 			replaceAll(googlePubSubData, "%v", sendValue);
 			replaceAll(googlePubSubData, "%u", includeUnit ? lunit : "");
@@ -239,14 +254,14 @@ void CGooglePubSubPush::DoGooglePubSubPush()
 #endif
 
 				wchar_t * argv[1];
-				argv[0]=(wchar_t *)filename.c_str();
-				PySys_SetArgv(1,argv);
+				argv[0] = (wchar_t *)filename.c_str();
+				PySys_SetArgv(1, argv);
 
 				std::string python_Dir = python_DirT.str();
 				if (!Py_IsInitialized()) {
 					Py_SetProgramName(Py_GetProgramFullPath());
 					ialize();
-                    PyModule_Create(&eventModuledef);
+					PyModule_Create(&eventModuledef);
 
 					// TODO: may have a small memleak, remove references in destructor
 					PyObject* sys = PyImport_ImportModule("sys");
@@ -366,7 +381,7 @@ namespace http {
 			}
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT A.ID,A.DeviceID,A.Delimitedvalue,A.TargetType,A.TargetVariable,A.TargetDeviceID,A.TargetProperty,A.Enabled, B.Name, A.IncludeUnit FROM GooglePubSubLink as A, DeviceStatus as B WHERE (A.DeviceID==B.ID)");
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				std::vector<std::vector<std::string> >::const_iterator itt;
 				int ii = 0;
@@ -425,7 +440,7 @@ namespace http {
 					targetproperty.c_str(),
 					atoi(includeunit.c_str()),
 					atoi(linkactive.c_str())
-					);
+				);
 			}
 			else {
 				m_sql.safe_query(
@@ -439,7 +454,7 @@ namespace http {
 					atoi(includeunit.c_str()),
 					atoi(linkactive.c_str()),
 					idx.c_str()
-					);
+				);
 			}
 			root["status"] = "OK";
 			root["title"] = "SaveGooglePubSubLink";

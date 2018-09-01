@@ -10,17 +10,13 @@ class Comm5TCP : public CDomoticzHardwareBase, ASyncTCP
 public:
 	Comm5TCP(const int ID, const std::string &IPAddress, const unsigned short usIPPort);
 
-	bool WriteToHardware(const char *pdata, const unsigned char length);
-
+	bool WriteToHardware(const char *pdata, const unsigned char length) override;
 public: // signals
 	boost::signals2::signal<void()>	sDisconnected;
-
 private:
-	bool StartHardware();
-	bool StopHardware();
-
+	bool StartHardware() override;
+	bool StopHardware() override;
 	bool Connect();
-
 protected:
 	void OnConnect();
 	void OnDisconnect();
@@ -37,7 +33,6 @@ protected:
 	void enableNotifications();
 
 	void processSensorData(const std::string& line);
-
 private:
 	std::string m_szIPAddress;
 	unsigned short m_usIPPort;

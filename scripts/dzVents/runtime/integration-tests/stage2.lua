@@ -136,7 +136,7 @@ local testElectricInstanceCounter = function(name)
 	res = res and checkAttributes(dev, {
 		['WhTotal'] = 20,
 		['WhActual'] = 10,
-		['counterToday'] = 0.020,
+		-- only works after at least 5 minutes ['counterToday'] = 0.020,
 		['usage'] = 10.0,
 	})
 	tstMsg('Test electric instance counter device', res)
@@ -351,6 +351,17 @@ local testText = function(name)
 	res = res and checkAttributes(dev, {
 		["text"] = "Oh my Darwin, what a lot of tests!"
 	})
+
+	local Time = require('Time')
+
+	local stage1Time = Time(dz.globalData.stage1Time)
+
+	local diff = dev.lastUpdate.compare(stage1Time).secs
+
+	res = res and (diff >= 3)
+
+	res = expectEql(true, res, 'Text device should have been delayed with 3 seconds.')
+
 	tstMsg('Test text device', res)
 	return res
 end
@@ -359,7 +370,7 @@ local testThermostatSetpoint = function(name)
 	local dev = dz.devices(name)
 	local res = true
 	res = res and checkAttributes(dev, {
-		["setPoint"] = 22,
+		["setPoint"] = 22.00,
 	})
 	tstMsg('Test thermostat device', res)
 	return res
@@ -515,6 +526,49 @@ local testAmpere3 = function(name)
 	return res
 end
 
+<<<<<<< HEAD:scripts/dzVents/runtime/integration-tests/stage2.lua
+=======
+local testRepeatSwitchDelta = function(expectedState, expectedDelta, state, delta)
+
+	local res = true
+
+	res = res and expectEql(state, expectedState, 'State is not correct')
+
+	local deltaDiff = delta - expectedDelta
+	local ok = (deltaDiff <= 1) -- some leniency
+	res = res and expectEql(true, ok, 'Time between events is not correct')
+
+	return res
+end
+
+local testRepeatSwitch = function(name)
+	local dev = dz.devices(name)
+	local res = true
+
+	local start = dz.globalData.repeatSwitch.getOldest()
+	local firstOn = dz.globalData.repeatSwitch.get(4)
+	local firstOff = dz.globalData.repeatSwitch.get(3)
+	local secondOn = dz.globalData.repeatSwitch.get(2)
+	local secondOff = dz.globalData.repeatSwitch.get(1)
+
+	res = res and testRepeatSwitchDelta('On', 8, firstOn.data.state, firstOn.data.delta)
+	res = res and testRepeatSwitchDelta('Off', 2, firstOff.data.state, firstOff.data.delta)
+	res = res and testRepeatSwitchDelta('On', 5, secondOn.data.state, secondOn.data.delta)
+	res = res and testRepeatSwitchDelta('Off', 2, secondOff.data.state, secondOff.data.delta)
+
+	tstMsg('Test repeat switch', res)
+	return res
+end
+
+local testCancelledRepeatSwitch = function(name)
+	local res = true
+	local count = dz.globalData.cancelledRepeatSwitch
+	res = res and expectEql(1, count)
+	tstMsg('Cancelled repeat switch', res)
+	return res
+end
+
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/integration-tests/stage2.lua
 local testLastUpdates = function(stage2Trigger)
 
 	local Time = require('Time')
@@ -533,7 +587,15 @@ local testLastUpdates = function(stage2Trigger)
 	if (results) then
 		results = dz.devices().reduce(function(acc, device)
 
+<<<<<<< HEAD:scripts/dzVents/runtime/integration-tests/stage2.lua
 			if (device.name ~= 'endResult' and device.name ~= 'stage1Trigger' and device.name ~= 'stage2Trigger') then
+=======
+			if (device.name ~= 'endResult' and
+				device.name ~= 'stage1Trigger' and
+				device.name ~= 'vdRepeatSwitch' and
+				device.anme ~= 'vdText' and
+				device.name ~= 'stage2Trigger') then
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/integration-tests/stage2.lua
 				local delta = stage1SecsAgo - device.lastUpdate.secondsAgo
 
 				-- test if lastUpdate for the device is close to state1Time
@@ -550,6 +612,29 @@ local testLastUpdates = function(stage2Trigger)
 	return results
 end
 
+local testVarCancelled = function(name)
+	local res = true
+	local var = dz.variables('varCancelled')
+	res = res and expectEql(0, var.value)
+	tstMsg('Cancelled variable', res)
+	return res
+end
+
+local testCancelledScene = function(name)
+	local res = true
+	local count = dz.globalData.cancelledScene
+	res = res and expectEql(1, count)
+	tstMsg('Cancelled repeat scene', res)
+	return res
+end
+
+local testHTTPSwitch = function(name)
+	local res = true
+	local trigger = dz.globalData.httpTrigger
+	res = res and expectEql('trigger2', trigger)
+	tstMsg('Test http trigger switch device', res)
+	return res
+end
 
 return {
 	active = true,
@@ -610,14 +695,32 @@ return {
 		res = res and testAmpere3('vdAmpere3')
 		res = res and testDimmer('vdSwitchDimmer')
 
+		res = res and testCancelledRepeatSwitch('vdCancelledRepeatSwitch')
 		res = res and testLastUpdates(stage2Trigger)
+<<<<<<< HEAD:scripts/dzVents/runtime/integration-tests/stage2.lua
+=======
+		res = res and testRepeatSwitch('vdRepeatSwitch')
+
+		res = res and testVarCancelled('varCancelled')
+		res = res and testCancelledScene('scCancelledScene')
+		res = res and testHTTPSwitch('vdHTTPSwitch');
+
+		-- test a require
+		local m = require('some_module')
+		local output = m.dzVents()
+		if (output ~= 'Rocks!') then
+			err('Module some_module did not load and run properly')
+		end
+
+		res = res and (output == 'Rocks!')
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/integration-tests/stage2.lua
 
 		if (not res) then
 			log('Results stage 2: FAILED!!!!', dz.LOG_ERROR)
 			dz.devices('endResult').updateText('FAILED')
 		else
 			log('Results stage 2: SUCCEEDED')
-			dz.devices('endResult').updateText('SUCCEEDED')
+			dz.devices('endResult').updateText('ENDRESULT SUCCEEDED')
 		end
 
 		log('Finishing stage 2')

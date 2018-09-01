@@ -128,8 +128,6 @@ m_reconnect(false)
 	m_bOutputLog = false;
 	m_bDoRestart = false;
 	m_bIsStarted = false;
-	m_username = username;
-	m_password = password;
 	m_HwdID = ID;
 	m_usIPPort = usIPPort;
 	m_poll_inputs = pollInputs;
@@ -362,10 +360,7 @@ void RelayNet::SetupDevices()
 			{
 				_log.Log(LOG_STATUS, "RelayNet: Create %s/Relay%i", m_szIPAddress.c_str(), relayNumber);
 
-				m_sql.safe_query(
-					"INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue) "
-					"VALUES (%d, '%q', %d, %d, %d, %d, 0, 12, 255, '%q', 0, ' ')",
-					m_HwdID, szIdx, relayNumber, pTypeLighting2, sTypeAC, int(STYPE_OnOff), "Relay");
+				m_sql.InsertDevice(m_HwdID, szIdx, relayNumber, pTypeLighting2, sTypeAC, STYPE_OnOff, 0, " ", "Relay");
 			}
 		}
 	}
@@ -380,10 +375,7 @@ void RelayNet::SetupDevices()
 			{
 				_log.Log(LOG_STATUS, "RelayNet: Create %s/Input%i", m_szIPAddress.c_str(), inputNumber);
 
-				m_sql.safe_query(
-					"INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue) "
-					"VALUES (%d,'%q',%d, %d, %d, %d, 0, 12, 255, '%q', 0, ' ')",
-					m_HwdID, szIdx, 100+inputNumber, pTypeLighting2, sTypeAC, int(STYPE_Contact), "Input");
+				m_sql.InsertDevice(m_HwdID, szIdx, 100 + inputNumber, pTypeLighting2, sTypeAC, int(STYPE_Contact), 0, " ", "Input");
 			}
 		}
 	}
@@ -800,7 +792,7 @@ void RelayNet::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::host_unreachable) ||
 		(error == boost::asio::error::timed_out))
 	{
-		_log.Log(LOG_ERROR, "RelayNet: OnError: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "RelayNet: OnError: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if ((error == boost::asio::error::eof) || (error == boost::asio::error::connection_reset))
 	{

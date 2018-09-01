@@ -52,6 +52,13 @@ describe('variables', function()
 	it('should instantiate', function()
 		local var = Variable(domoticz, testData.domoticzData[xVar])
 		assert.is_not_nil(var)
+		assert.is_false(var.isHTTPResponse)
+		assert.is_true(var.isVariable)
+		assert.is_false(var.isTimer)
+		assert.is_false(var.isScene)
+		assert.is_false(var.isDevice)
+		assert.is_false(var.isGroup)
+		assert.is_false(var.isSecurity)
 	end)
 
 	it('should have properties', function()
@@ -71,35 +78,55 @@ describe('variables', function()
 		local var = Variable(domoticz, testData.domoticzData[yVar])
 		var.set(12.5)
 		assert.is_same(1, _.size(commandArray))
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testVariable.lua
 		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=y&vtype=1&vvalue=12.5&idx=2' }, commandArray[1])
+=======
+		assert.is_same({ ['Variable'] = { idx = 2, value='12.5', _trigger=true } }, commandArray[1])
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testVariable.lua
 	end)
 
 	it('should set a new integer value', function()
 		local var = Variable(domoticz, testData.domoticzData[xVar])
 		var.set(12)
 		assert.is_same(1, _.size(commandArray))
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testVariable.lua
 		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=x&vtype=0&vvalue=12&idx=1' }, commandArray[1])
+=======
+		assert.is_same({ ['Variable'] = { idx = 1, value='12', _trigger=true } }, commandArray[1])
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testVariable.lua
 	end)
 
 	it('should set a new string value', function()
 		local var = Variable(domoticz, testData.domoticzData[zVar])
 		var.set('dzVents')
 		assert.is_same(1, _.size(commandArray))
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testVariable.lua
 		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=z&vtype=2&vvalue=dzVents&idx=3' }, commandArray[1])
+=======
+		assert.is_same({ ['Variable'] = { idx = 3, value='dzVents', _trigger=true } }, commandArray[1])
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testVariable.lua
 	end)
 
 	it('should set a new date value', function()
 		local var = Variable(domoticz, testData.domoticzData[aVar])
 		var.set('12/12/2012')
 		assert.is_same(1, _.size(commandArray))
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testVariable.lua
 		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=a&vtype=3&vvalue=12/12/2012&idx=4' }, commandArray[1])
+=======
+		assert.is_same({ ['Variable'] = { idx = 4, value='12/12/2012', _trigger=true } }, commandArray[1])
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testVariable.lua
 	end)
 
 	it('should set a new time value', function()
 		local var = Variable(domoticz, testData.domoticzData[bVar])
 		var.set('12:34')
 		assert.is_same(1, _.size(commandArray))
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testVariable.lua
 		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=b&vtype=4&vvalue=12:34&idx=5' }, commandArray[1])
+=======
+		assert.is_same({ ['Variable'] = { idx = 5, value='12:34', _trigger=true } }, commandArray[1])
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testVariable.lua
 	end)
 
 	it('should not fail when trying to cast a string', function()
@@ -133,6 +160,19 @@ describe('variables', function()
 		local var = Variable(domoticz, testData.domoticzData[spacedVar])
 		var.set('dzVents with spaces')
 		assert.is_same(1, _.size(commandArray))
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testVariable.lua
 		assert.is_same({ ['OpenURL'] = 'url/json.htm?type=command&param=updateuservariable&vname=var+with+spaces&vtype=2&vvalue=dzVents+with+spaces&idx=6' }, commandArray[1])
+=======
+		assert.is_same({ ['Variable'] = { idx = 3, value='dzVents', _trigger = true, _after = 5 } }, commandArray[1])
+	end)
+
+	it('should have a cancelQueuedCommands method', function()
+		local var = Variable(domoticz, testData.domoticzData[zVar])
+
+		var.cancelQueuedCommands()
+		assert.is_same({
+			{ ['Cancel'] = { type = 'variable', idx = 3 } }
+		}, commandArray)
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testVariable.lua
 	end)
 end)

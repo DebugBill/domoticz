@@ -127,7 +127,7 @@ namespace http {
 		class CProxySharedData {
 		public:
 			CProxySharedData() {};
-			void SetInstanceId(std::string instanceid);
+			void SetInstanceId(const std::string &instanceid);
 			std::string GetInstanceId();
 			void LockPrefsMutex();
 			void UnlockPrefsMutex();

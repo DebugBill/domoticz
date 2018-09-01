@@ -1351,6 +1351,10 @@ bool COpenZWave::SwitchColor(const int nodeID, const int instanceID, const int c
 		_log.Log(LOG_ERROR, "OpenZWave: Node has failed (or is not alive), Switch command not sent! (NodeID: %d, 0x%02x)", nodeID, nodeID);
 		return false;
 	}
+	// TODO: remove this print once Ziapto Bulb 2 workaround has been verified
+	// Gizmocuz: This has been in for quite some while, is it verified ?
+	//_log.Debug(DEBUG_NORM, "OpenZWave::SwitchColor Manufacturer_id: '%s', Product_type: '%s', Product_id: '%s', Application_version: %u",
+	  //       pNode->Manufacturer_id.c_str(), pNode->Product_type.c_str(), pNode->Product_id.c_str(), pNode->Application_version);
 
 	OpenZWave::ValueID vID(0, 0, OpenZWave::ValueID::ValueGenre_Basic, 0, 0, 0, OpenZWave::ValueID::ValueType_Bool);
 	if (GetValueByCommandClassLabel(nodeID, instanceID, COMMAND_CLASS_COLOR_CONTROL, "Color", vID) == true)
@@ -1366,6 +1370,39 @@ bool COpenZWave::SwitchColor(const int nodeID, const int instanceID, const int c
 					{
 						//Old Zipato RGB bulp firmware does not support cold white
 						OutColorStr = OutColorStr.substr(0, 9);
+					}
+				}
+			}
+			if ((pNode->Product_type == "0002") && (pNode->Product_id == "0003"))
+			{
+				if (pNode->Application_version < 106)
+				{
+					if (OutColorStr.size() == 11)
+					{
+						//Zipato Bulb2 does not support cold white and warm white at the same time
+						std::stringstream sstr;
+						std::string RGB = OutColorStr.substr(0, 7);
+						unsigned wWhite = strtoul(OutColorStr.substr(7, 2).c_str(), NULL, 16);
+						unsigned cWhite = strtoul(OutColorStr.substr(9, 2).c_str(), NULL, 16);
+						if (wWhite > cWhite)
+						{
+							wWhite = wWhite + cWhite;
+							cWhite = 0;
+						}
+						else
+						{
+							cWhite = wWhite + cWhite;
+							wWhite = 0;
+						}
+						sstr << RGB
+							<< std::setw(2) << std::uppercase << std::hex << std::setfill('0') << std::hex << wWhite
+							<< std::setw(2) << std::uppercase << std::hex << std::setfill('0') << std::hex << cWhite;
+
+						OutColorStr = sstr.str();
+						// TODO: remove this print once Zipato Bulb 2 workaround has been verified
+						// Gizmocuz: This has been in for quite some while, is it verified ?
+						//_log.Debug(DEBUG_NORM, "OpenZWave::SwitchColor Workaround for Zipato Bulb 2 ColorStr: '%s', OutColorStr: '%s'",
+						  //       ColorStr.c_str(), OutColorStr.c_str());
 					}
 				}
 			}
@@ -3291,7 +3328,7 @@ bool COpenZWave::NetworkInfo(const int hwID, std::vector< std::vector< int > > &
 	std::vector<std::vector<std::string> > result;
 	result = m_sql.safe_query("SELECT HomeID,NodeID FROM ZWaveNodes WHERE (HardwareID = %d)",
 		hwID);
-	if (result.size() < 1) {
+	if (result.empty()) {
 		return false;
 	}
 	int rowCnt = 0;
@@ -3542,7 +3579,7 @@ void COpenZWave::EnableNodePoll(const unsigned int homeID, const int nodeID, con
 	std::vector<std::vector<std::string> > result;
 	result = m_sql.safe_query("SELECT ProductDescription FROM ZWaveNodes WHERE (HardwareID==%d) AND (HomeID==%u) AND (NodeID==%d)",
 		m_HwdID, homeID, nodeID);
-	if (result.size() > 0)
+	if (!result.empty())
 	{
 		std::string ProductDescription = result[0][0];
 		bSingleIndexPoll = (
@@ -3713,7 +3750,7 @@ void COpenZWave::AddNode(const unsigned int homeID, const int nodeID, const Node
 		m_HwdID, homeID, nodeID);
 	std::string sProductDescription = pNode->Manufacturer_name + " " + pNode->Product_name;
 
-	if (result.size() < 1)
+	if (result.empty())
 	{
 		//Not Found, Add it to the database
 		if (nodeID != m_controllerNodeId)
@@ -3769,8 +3806,13 @@ void COpenZWave::EnableDisableNodePolling(int NodeID)
 
 	std::vector<std::vector<std::string> > result;
 	result = m_sql.safe_query("SELECT PollTime FROM ZWaveNodes WHERE (HardwareID==%d) AND (NodeID==%d)",
+<<<<<<< HEAD
 		m_HwdID, NodeID);
 	if (result.size() < 1)
+=======
+		m_HwdID, nodeID);
+	if (result.empty())
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		return;
 	int PollTime = atoi(result[0][0].c_str());
 
@@ -4464,7 +4506,7 @@ namespace http {
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT ID,HomeID,NodeID,Name,ProductDescription,PollTime FROM ZWaveNodes WHERE (HardwareID==%d)",
 				iHardwareID);
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				std::vector<std::vector<std::string> >::const_iterator itt;
 				int ii = 0;
@@ -4538,7 +4580,7 @@ namespace http {
 				idx.c_str()
 			);
 			result = m_sql.safe_query("SELECT HardwareID, HomeID, NodeID from ZWaveNodes WHERE (ID==%s)", idx.c_str());
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				int hwid = atoi(result[0][0].c_str());
 				unsigned int homeID = boost::lexical_cast<unsigned int>(result[0][1]);
@@ -4566,7 +4608,7 @@ namespace http {
 				return;
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT HardwareID,HomeID,NodeID from ZWaveNodes WHERE (ID=='%q')", idx.c_str());
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				int hwid = atoi(result[0][0].c_str());
 				unsigned int homeID = boost::lexical_cast<unsigned int>(result[0][1]);
@@ -4918,7 +4960,7 @@ namespace http {
 				result = m_sql.safe_query("SELECT ID,HomeID,NodeID,Name FROM ZWaveNodes WHERE (HardwareID==%d)",
 					iHardwareID);
 
-				if (result.size() > 0)
+				if (!result.empty())
 				{
 					int MaxNoOfGroups = 0;
 					std::vector<std::vector<std::string> >::const_iterator itt;
@@ -5004,7 +5046,7 @@ namespace http {
 				return;
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT HardwareID,HomeID,NodeID from ZWaveNodes WHERE (ID=='%q')", idx.c_str());
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				int hwid = atoi(result[0][0].c_str());
 				unsigned int homeID = boost::lexical_cast<unsigned int>(result[0][1]);
@@ -5028,7 +5070,7 @@ namespace http {
 				return;
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT HardwareID,HomeID,NodeID from ZWaveNodes WHERE (ID==%q)", idx.c_str());
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				int hwid = atoi(result[0][0].c_str());
 				unsigned int homeID = boost::lexical_cast<unsigned int>(result[0][1]);
@@ -5474,7 +5516,7 @@ namespace http {
 
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT HardwareID,HomeID,NodeID from ZWaveNodes WHERE (ID=='%q')", idx.c_str());
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				int hwid = atoi(result[0][0].c_str());
 				unsigned int homeID = boost::lexical_cast<unsigned int>(result[0][1]);
@@ -5499,7 +5541,7 @@ namespace http {
 
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT HardwareID,HomeID,NodeID from ZWaveNodes WHERE (ID==%q)", idx.c_str());
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				int hwid = atoi(result[0][0].c_str());
 				unsigned int homeID = boost::lexical_cast<unsigned int>(result[0][1]);

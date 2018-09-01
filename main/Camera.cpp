@@ -19,7 +19,7 @@ extern std::string szUserDataFolder;
 
 CCameraHandler::CCameraHandler(void)
 {
-	m_seconds_counter=0;
+	m_seconds_counter = 0;
 }
 
 CCameraHandler::~CCameraHandler(void)
@@ -32,57 +32,69 @@ void CCameraHandler::ReloadCameras()
 	boost::lock_guard<boost::mutex> l(m_mutex);
 	m_cameradevices.clear();
 	std::vector<std::vector<std::string> > result;
-	std::vector<std::vector<std::string> >::const_iterator itt;
 
+<<<<<<< HEAD
 	result=m_sql.safe_query("SELECT ID, Name, Address, Port, Username, Password, ImageURL FROM Cameras WHERE (Enabled == 1) ORDER BY ID");
 	if (result.size()>0)
+=======
+	result = m_sql.safe_query("SELECT ID, Name, Address, Port, Username, Password, ImageURL, Protocol FROM Cameras WHERE (Enabled == 1) ORDER BY ID");
+	if (!result.empty())
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	{
-		_log.Log(LOG_STATUS,"Camera: settings (re)loaded");
-		for (itt=result.begin(); itt!=result.end(); ++itt)
+		_log.Log(LOG_STATUS, "Camera: settings (re)loaded");
+		for (const auto & itt : result)
 		{
-			std::vector<std::string> sd=*itt;
+			std::vector<std::string> sd = itt;
 
 			cameraDevice citem;
-			std::stringstream s_str( sd[0] );
+			std::stringstream s_str(sd[0]);
 			s_str >> citem.ID;
+<<<<<<< HEAD
 			citem.Name		= sd[1];
 			citem.Address	= sd[2];
 			citem.Port		= atoi(sd[3].c_str());
 			citem.Username	= base64_decode(sd[4]);
 			citem.Password	= base64_decode(sd[5]);
 			citem.ImageURL	= sd[6];
+=======
+			citem.Name = sd[1];
+			citem.Address = sd[2];
+			citem.Port = atoi(sd[3].c_str());
+			citem.Username = base64_decode(sd[4]);
+			citem.Password = base64_decode(sd[5]);
+			citem.ImageURL = sd[6];
+			citem.Protocol = (eCameraProtocol)atoi(sd[7].c_str());
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			m_cameradevices.push_back(citem);
 			_AddedCameras.push_back(sd[0]);
 		}
 	}
 
-	std::vector<std::string>::const_iterator ittCam;
-	for (ittCam=_AddedCameras.begin(); ittCam!=_AddedCameras.end(); ++ittCam)
+	for (const auto & ittCam : _AddedCameras)
 	{
 		//Get Active Devices/Scenes
-		ReloadCameraActiveDevices(*ittCam);
+		ReloadCameraActiveDevices(ittCam);
 	}
 }
 
 void CCameraHandler::ReloadCameraActiveDevices(const std::string &CamID)
 {
-	cameraDevice *pCamera=GetCamera(CamID);
-	if (pCamera==NULL)
+	cameraDevice *pCamera = GetCamera(CamID);
+	if (pCamera == NULL)
 		return;
 	pCamera->mActiveDevices.clear();
 	std::vector<std::vector<std::string> > result;
-	std::vector<std::vector<std::string> >::const_iterator itt;
-	result=m_sql.safe_query("SELECT ID, DevSceneType, DevSceneRowID FROM CamerasActiveDevices WHERE (CameraRowID=='%q') ORDER BY ID", CamID.c_str());
-	if (result.size()>0)
+	result = m_sql.safe_query("SELECT ID, DevSceneType, DevSceneRowID FROM CamerasActiveDevices WHERE (CameraRowID=='%q') ORDER BY ID", CamID.c_str());
+	if (!result.empty())
 	{
-		for (itt=result.begin(); itt!=result.end(); ++itt)
+		for (const auto & itt : result)
 		{
-			std::vector<std::string> sd=*itt;
+			std::vector<std::string> sd = itt;
 			cameraActiveDevice aDevice;
-			std::stringstream s_str( sd[0] );
+			std::stringstream s_str(sd[0]);
 			s_str >> aDevice.ID;
-			aDevice.DevSceneType=(unsigned char)atoi(sd[1].c_str());
-			std::stringstream s_str2( sd[2] );
+			aDevice.DevSceneType = (unsigned char)atoi(sd[1].c_str());
+			std::stringstream s_str2(sd[2]);
 			s_str2 >> aDevice.DevSceneRowID;
 			pCamera->mActiveDevices.push_back(aDevice);
 		}
@@ -93,26 +105,23 @@ void CCameraHandler::ReloadCameraActiveDevices(const std::string &CamID)
 uint64_t CCameraHandler::IsDevSceneInCamera(const unsigned char DevSceneType, const std::string &DevSceneID)
 {
 	uint64_t ulID;
-	std::stringstream s_str( DevSceneID );
+	std::stringstream s_str(DevSceneID);
 	s_str >> ulID;
-	return IsDevSceneInCamera(DevSceneType,ulID);
+	return IsDevSceneInCamera(DevSceneType, ulID);
 }
 
 uint64_t CCameraHandler::IsDevSceneInCamera(const unsigned char DevSceneType, const uint64_t DevSceneID)
 {
 	boost::lock_guard<boost::mutex> l(m_mutex);
-	std::vector<cameraDevice>::iterator itt;
-	for (itt=m_cameradevices.begin(); itt!=m_cameradevices.end(); ++itt)
+	for (const auto & itt : m_cameradevices)
 	{
-		cameraDevice *pCamera=&(*itt);
-		std::vector<cameraActiveDevice>::iterator itt2;
-		for (itt2=pCamera->mActiveDevices.begin(); itt2!=pCamera->mActiveDevices.end(); ++itt2)
+		for (const auto & itt2 : itt.mActiveDevices)
 		{
 			if (
-				(itt2->DevSceneType==DevSceneType)&&
-				(itt2->DevSceneRowID==DevSceneID)
+				(itt2.DevSceneType == DevSceneType) &&
+				(itt2.DevSceneRowID == DevSceneID)
 				)
-				return itt->ID;
+				return itt.ID;
 		}
 	}
 	return 0;
@@ -120,16 +129,16 @@ uint64_t CCameraHandler::IsDevSceneInCamera(const unsigned char DevSceneType, co
 
 std::string CCameraHandler::GetCameraURL(const std::string &CamID)
 {
-	cameraDevice* pCamera=GetCamera(CamID);
-	if (pCamera==NULL)
+	cameraDevice* pCamera = GetCamera(CamID);
+	if (pCamera == NULL)
 		return "";
 	return GetCameraURL(pCamera);
 }
 
 std::string CCameraHandler::GetCameraURL(const uint64_t CamID)
 {
-	cameraDevice* pCamera=GetCamera(CamID);
-	if (pCamera==NULL)
+	cameraDevice* pCamera = GetCamera(CamID);
+	if (pCamera == NULL)
 		return "";
 	return GetCameraURL(pCamera);
 }
@@ -140,8 +149,15 @@ std::string CCameraHandler::GetCameraURL(cameraDevice *pCamera)
 
 	bool bHaveUPinURL = (pCamera->ImageURL.find("#USERNAME") != std::string::npos) || (pCamera->ImageURL.find("#PASSWORD") != std::string::npos);
 
+<<<<<<< HEAD
 	if ((!bHaveUPinURL)&&((pCamera->Username != "") || (pCamera->Password != "")))
 		s_str << "http://" << pCamera->Username << ":" << pCamera->Password << "@" << pCamera->Address << ":" << pCamera->Port;
+=======
+	std::string szURLPreFix = (pCamera->Protocol == CPROTOCOL_HTTP) ? "http" : "https";
+
+	if ((!bHaveUPinURL) && ((pCamera->Username != "") || (pCamera->Password != "")))
+		s_str << szURLPreFix << "://" << pCamera->Username << ":" << pCamera->Password << "@" << pCamera->Address << ":" << pCamera->Port;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	else
 		s_str << "http://" << pCamera->Address << ":" << pCamera->Port;
 	return s_str.str();
@@ -150,18 +166,17 @@ std::string CCameraHandler::GetCameraURL(cameraDevice *pCamera)
 cameraDevice* CCameraHandler::GetCamera(const std::string &CamID)
 {
 	uint64_t ulID;
-	std::stringstream s_str( CamID );
+	std::stringstream s_str(CamID);
 	s_str >> ulID;
 	return GetCamera(ulID);
 }
 
 cameraDevice* CCameraHandler::GetCamera(const uint64_t CamID)
 {
-	std::vector<cameraDevice>::iterator itt;
-	for (itt=m_cameradevices.begin(); itt!=m_cameradevices.end(); ++itt)
+	for (auto & itt : m_cameradevices)
 	{
-		if (itt->ID==CamID)
-			return &(*itt);
+		if (itt.ID == CamID)
+			return &itt;
 	}
 	return NULL;
 }
@@ -169,26 +184,26 @@ cameraDevice* CCameraHandler::GetCamera(const uint64_t CamID)
 bool CCameraHandler::TakeSnapshot(const std::string &CamID, std::vector<unsigned char> &camimage)
 {
 	uint64_t ulID;
-	std::stringstream s_str( CamID );
+	std::stringstream s_str(CamID);
 	s_str >> ulID;
-	return TakeSnapshot(ulID,camimage);
+	return TakeSnapshot(ulID, camimage);
 }
 
 bool CCameraHandler::TakeRaspberrySnapshot(std::vector<unsigned char> &camimage)
 {
-	std::string raspparams="-w 800 -h 600 -t 1";
+	std::string raspparams = "-w 800 -h 600 -t 1";
 	m_sql.GetPreferencesVar("RaspCamParams", raspparams);
 
 	std::string OutputFileName = szUserDataFolder + "tempcam.jpg";
 
-	std::string raspistillcmd="raspistill " + raspparams + " -o " + OutputFileName;
+	std::string raspistillcmd = "raspistill " + raspparams + " -o " + OutputFileName;
 	std::remove(OutputFileName.c_str());
 
 	//Get our image
-	int ret=system(raspistillcmd.c_str());
+	int ret = system(raspistillcmd.c_str());
 	if (ret != 0)
 	{
-		_log.Log(LOG_ERROR, "Error executing raspistill command. returned: %d",ret);
+		_log.Log(LOG_ERROR, "Error executing raspistill command. returned: %d", ret);
 		return false;
 	}
 	//If all went correct, we should have our file
@@ -218,11 +233,11 @@ bool CCameraHandler::TakeRaspberrySnapshot(std::vector<unsigned char> &camimage)
 
 bool CCameraHandler::TakeUVCSnapshot(const std::string &device, std::vector<unsigned char> &camimage)
 {
-	std::string uvcparams="-S80 -B128 -C128 -G80 -x800 -y600 -q100";
+	std::string uvcparams = "-S80 -B128 -C128 -G80 -x800 -y600 -q100";
 	m_sql.GetPreferencesVar("UVCParams", uvcparams);
 
 	std::string OutputFileName = szUserDataFolder + "tempcam.jpg";
-	std::string nvcmd="uvccapture " + uvcparams+ " -o" + OutputFileName;
+	std::string nvcmd = "uvccapture " + uvcparams + " -o" + OutputFileName;
 	if (!device.empty()) {
 		nvcmd += " -d/dev/" + device;
 	}
@@ -231,7 +246,7 @@ bool CCameraHandler::TakeUVCSnapshot(const std::string &device, std::vector<unsi
 	try
 	{
 		//Get our image
-		int ret=system(nvcmd.c_str());
+		int ret = system(nvcmd.c_str());
 		if (ret != 0)
 		{
 			_log.Log(LOG_ERROR, "Error executing uvccapture command. returned: %d", ret);
@@ -263,25 +278,25 @@ bool CCameraHandler::TakeSnapshot(const uint64_t CamID, std::vector<unsigned cha
 {
 	boost::lock_guard<boost::mutex> l(m_mutex);
 
-	cameraDevice *pCamera=GetCamera(CamID);
-	if (pCamera==NULL)
+	cameraDevice *pCamera = GetCamera(CamID);
+	if (pCamera == NULL)
 		return false;
 
-	std::string szURL=GetCameraURL(pCamera);
-	szURL+="/" + pCamera->ImageURL;
+	std::string szURL = GetCameraURL(pCamera);
+	szURL += "/" + pCamera->ImageURL;
 	stdreplace(szURL, "#USERNAME", pCamera->Username);
 	stdreplace(szURL, "#PASSWORD", pCamera->Password);
 
-	if (pCamera->ImageURL=="raspberry.cgi")
+	if (pCamera->ImageURL == "raspberry.cgi")
 		return TakeRaspberrySnapshot(camimage);
-	else if (pCamera->ImageURL=="uvccapture.cgi")
+	else if (pCamera->ImageURL == "uvccapture.cgi")
 		return TakeUVCSnapshot(pCamera->Username, camimage);
 
 	std::vector<std::string> ExtraHeaders;
-	return HTTPClient::GETBinary(szURL,ExtraHeaders,camimage,5);
+	return HTTPClient::GETBinary(szURL, ExtraHeaders, camimage, 5);
 }
 
-std::string WrapBase64(const std::string &szSource, const size_t lsize=72)
+std::string WrapBase64(const std::string &szSource, const size_t lsize = 72)
 {
 	std::string cstring = szSource;
 	std::string ret = "";
@@ -331,6 +346,7 @@ bool CCameraHandler::EmailCameraSnapshot(const std::string &CamIdx, const std::s
 	m_sql.GetPreferencesVar("EmailPassword",nValue,EmailPassword);
 	m_sql.GetPreferencesVar("EmailPort", EmailPort);
 	m_sql.GetPreferencesVar("EmailAsAttachment", EmailAsAttachment);
+<<<<<<< HEAD
    std::string htmlMsg=
       "<html>\r\n"
       "<body>\r\n";
@@ -364,6 +380,41 @@ bool CCameraHandler::EmailCameraSnapshot(const std::string &CamIdx, const std::s
       if (EmailAsAttachment != 0)
          sclient.AddAttachment(imgstring,"snapshot"+*camIt+".jpg");
    }
+=======
+	std::string htmlMsg =
+		"<html>\r\n"
+		"<body>\r\n";
+
+	SMTPClient sclient;
+	sclient.SetFrom(CURLEncode::URLDecode(EmailFrom.c_str()));
+	sclient.SetTo(CURLEncode::URLDecode(EmailTo.c_str()));
+	sclient.SetCredentials(base64_decode(EmailUsername), base64_decode(EmailPassword));
+	sclient.SetServer(CURLEncode::URLDecode(EmailServer.c_str()), EmailPort);
+	sclient.SetSubject(CURLEncode::URLDecode(subject));
+
+	for (const auto & camIt : splitresults)
+	{
+		std::vector<unsigned char> camimage;
+
+		if (!TakeSnapshot(camIt, camimage))
+			return false;
+
+		std::vector<char> filedata;
+		filedata.insert(filedata.begin(), camimage.begin(), camimage.end());
+		std::string imgstring;
+		imgstring.insert(imgstring.end(), filedata.begin(), filedata.end());
+		imgstring = base64_encode((const unsigned char*)imgstring.c_str(), filedata.size());
+		imgstring = WrapBase64(imgstring);
+
+		htmlMsg +=
+			"<img src=\"data:image/jpeg;base64,";
+		htmlMsg +=
+			imgstring +
+			"\">\r\n";
+		if (EmailAsAttachment != 0)
+			sclient.AddAttachment(imgstring, "snapshot" + camIt + ".jpg");
+	}
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	if (EmailAsAttachment == 0)
 		sclient.SetHTMLBody(htmlMsg);
 	bool bRet=sclient.SendEmail();
@@ -393,13 +444,12 @@ namespace http {
 			else {
 				result = m_sql.safe_query("SELECT ID, Name, Enabled, Address, Port, Username, Password, ImageURL FROM Cameras ORDER BY ID ASC");
 			}
-			if (result.size() > 0)
+			if (!result.empty())
 			{
-				std::vector<std::vector<std::string> >::const_iterator itt;
 				int ii = 0;
-				for (itt = result.begin(); itt != result.end(); ++itt)
+				for (const auto & itt : result)
 				{
-					std::vector<std::string> sd = *itt;
+					std::vector<std::string> sd = itt;
 
 					root["result"][ii]["idx"] = sd[0];
 					root["result"][ii]["Name"] = sd[1];

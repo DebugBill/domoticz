@@ -6,7 +6,7 @@
 -- domoticz.helpers.myHelper()
 
 -- NOTE:
--- THERE CAN BE ONLY ONE global_data SCRIPT
+-- THERE CAN BE ONLY ONE global_data SCRIPT in your Domoticz install.
 
 return {
 	data = {

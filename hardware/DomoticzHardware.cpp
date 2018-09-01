@@ -36,6 +36,11 @@ CDomoticzHardwareBase::~CDomoticzHardwareBase()
 {
 }
 
+bool CDomoticzHardwareBase::CustomCommand(const uint64_t idx, const std::string &sCommand)
+{
+	return false;
+}
+
 bool CDomoticzHardwareBase::Start()
 {
 	m_iHBCounter = 0;
@@ -466,13 +471,13 @@ double CDomoticzHardwareBase::GetKwhMeter(const int NodeID, const int ChildID, b
 	std::vector<std::vector<std::string> > result;
 	result = m_sql.safe_query("SELECT ID FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q') AND (Type==%d) AND (Subtype==%d)",
 		m_HwdID, szTmp, int(pTypeGeneral), int(sTypeKwh));
-	if (result.size() < 1)
+	if (result.empty())
 	{
 		bExists = false;
 		return 0;
 	}
 	result = m_sql.safe_query("SELECT MAX(Counter) FROM Meter_Calendar WHERE (DeviceRowID=='%q')", result[0][0].c_str());
-	if (result.size() < 1)
+	if (result.empty())
 	{
 		bExists = false;
 		return 0.0f;
@@ -550,13 +555,60 @@ void CDomoticzHardwareBase::SendSwitchIfNotExists(const int NodeID, const int Ch
 	std::vector<std::vector<std::string> > result;
 	result = m_sql.safe_query("SELECT Name,nValue,sValue FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q') AND (Unit == %d) AND (Type==%d) AND (Subtype==%d)",
 		m_HwdID, szIdx, ChildID, int(pTypeLighting2), int(sTypeAC));
-	if (result.size() < 1)
+	if (result.empty())
 	{
 		SendSwitch(NodeID, ChildID, BatteryLevel, bOn, Level, defaultname);
 	}
 }
 
+<<<<<<< HEAD
 void CDomoticzHardwareBase::SendSwitch(const int NodeID, const int ChildID, const int BatteryLevel, const bool bOn, const double Level, const std::string &defaultname)
+=======
+void CDomoticzHardwareBase::SendSwitchUnchecked(const int NodeID, const int ChildID, const int BatteryLevel, const bool bOn, const double Level, const std::string &defaultname, const int RssiLevel /* =12 */)
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
+{
+	double rlevel = (16.0 / 100.0)*Level;
+	int level = int(rlevel);
+
+	//make device ID
+	unsigned char ID1 = (unsigned char)((NodeID & 0xFF000000) >> 24);
+	unsigned char ID2 = (unsigned char)((NodeID & 0xFF0000) >> 16);
+	unsigned char ID3 = (unsigned char)((NodeID & 0xFF00) >> 8);
+	unsigned char ID4 = (unsigned char)NodeID & 0xFF;
+
+	//Send as Lighting 2
+	tRBUF lcmd;
+	memset(&lcmd, 0, sizeof(RBUF));
+	lcmd.LIGHTING2.packetlength = sizeof(lcmd.LIGHTING2) - 1;
+	lcmd.LIGHTING2.packettype = pTypeLighting2;
+	lcmd.LIGHTING2.subtype = sTypeAC;
+	lcmd.LIGHTING2.id1 = ID1;
+	lcmd.LIGHTING2.id2 = ID2;
+	lcmd.LIGHTING2.id3 = ID3;
+	lcmd.LIGHTING2.id4 = ID4;
+	lcmd.LIGHTING2.unitcode = ChildID;
+	if (!bOn)
+	{
+		lcmd.LIGHTING2.cmnd = light2_sOff;
+	}
+	else
+	{
+		if (level != 0)
+			lcmd.LIGHTING2.cmnd = light2_sSetLevel;
+		else
+			lcmd.LIGHTING2.cmnd = light2_sOn;
+	}
+	lcmd.LIGHTING2.level = level;
+	lcmd.LIGHTING2.filler = 0;
+	lcmd.LIGHTING2.rssi = 12;
+	sDecodeRXMessage(this, (const unsigned char *)&lcmd.LIGHTING2, defaultname.c_str(), BatteryLevel);
+}
+
+<<<<<<< HEAD
+void CDomoticzHardwareBase::SendBlindSensor(const int NodeID, const int ChildID, const int BatteryLevel, const int Command, const std::string &defaultname)
+=======
+
+void CDomoticzHardwareBase::SendSwitch(const int NodeID, const int ChildID, const int BatteryLevel, const bool bOn, const double Level, const std::string &defaultname, const int RssiLevel /* =12 */)
 {
 	double rlevel = (16.0 / 100.0)*Level;
 	int level = int(rlevel);
@@ -586,36 +638,11 @@ void CDomoticzHardwareBase::SendSwitch(const int NodeID, const int ChildID, cons
 				return;
 		}
 	}
-
-	//Send as Lighting 2
-	tRBUF lcmd;
-	memset(&lcmd, 0, sizeof(RBUF));
-	lcmd.LIGHTING2.packetlength = sizeof(lcmd.LIGHTING2) - 1;
-	lcmd.LIGHTING2.packettype = pTypeLighting2;
-	lcmd.LIGHTING2.subtype = sTypeAC;
-	lcmd.LIGHTING2.id1 = ID1;
-	lcmd.LIGHTING2.id2 = ID2;
-	lcmd.LIGHTING2.id3 = ID3;
-	lcmd.LIGHTING2.id4 = ID4;
-	lcmd.LIGHTING2.unitcode = ChildID;
-	if (!bOn)
-	{
-		lcmd.LIGHTING2.cmnd = light2_sOff;
-	}
-	else
-	{
-		if (level!=0)
-			lcmd.LIGHTING2.cmnd = light2_sSetLevel;
-		else
-			lcmd.LIGHTING2.cmnd = light2_sOn;
-	}
-	lcmd.LIGHTING2.level = level;
-	lcmd.LIGHTING2.filler = 0;
-	lcmd.LIGHTING2.rssi = 12;
-	sDecodeRXMessage(this, (const unsigned char *)&lcmd.LIGHTING2, defaultname.c_str(), BatteryLevel);
+	SendSwitchUnchecked(NodeID, ChildID, BatteryLevel, bOn, Level, defaultname, RssiLevel);
 }
 
-void CDomoticzHardwareBase::SendBlindSensor(const int NodeID, const int ChildID, const int BatteryLevel, const int Command, const std::string &defaultname)
+void CDomoticzHardwareBase::SendBlindSensor(const int NodeID, const int ChildID, const int BatteryLevel, const int Command, const std::string &defaultname, const int RssiLevel /* =12 */)
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 {
 	//Send as Blinds
 	tRBUF lcmd;
@@ -634,20 +661,22 @@ void CDomoticzHardwareBase::SendBlindSensor(const int NodeID, const int ChildID,
 	sDecodeRXMessage(this, (const unsigned char *)&lcmd.BLINDS1, defaultname.c_str(), BatteryLevel);
 }
 
-void CDomoticzHardwareBase::SendRGBWSwitch(const int NodeID, const int ChildID, const int BatteryLevel, const double Level, const bool bIsRGBW, const std::string &defaultname)
+void CDomoticzHardwareBase::SendRGBWSwitch(const int NodeID, const int ChildID, const int BatteryLevel, const int Level, const bool bIsRGBW, const std::string &defaultname)
 {
 	int level = int(Level);
-	int subType = (bIsRGBW == true) ? sTypeLimitlessRGBW : sTypeLimitlessRGB;
-	//Send as LimitlessLight
-	_tLimitlessLights lcmd;
+	int subType = (bIsRGBW == true) ? sTypeColor_RGB_W : sTypeColor_RGB;
+	if (defaultname == "LIVCOL")
+		subType = sTypeColor_LivCol;
+	//Send as ColorSwitch
+	_tColorSwitch lcmd;
 	lcmd.id = NodeID;
 	lcmd.subtype = subType;
 	if (level == 0)
-		lcmd.command = Limitless_LedOff;
+		lcmd.command = Color_LedOff;
 	else
-		lcmd.command = Limitless_LedOn;
+		lcmd.command = Color_LedOn;
 	lcmd.dunit = ChildID;
-	lcmd.value = level;
+	lcmd.value = (uint32_t)level;
 	sDecodeRXMessage(this, (const unsigned char *)&lcmd, defaultname.c_str(), BatteryLevel);
 }
 
@@ -848,13 +877,15 @@ void CDomoticzHardwareBase::SendAlertSensor(const int NodeID, const int BatteryL
 	sDecodeRXMessage(this, (const unsigned char *)&gDevice, defaultname.c_str(), BatteryLevel);
 }
 
-void CDomoticzHardwareBase::SendGeneralSwitchSensor(const int NodeID, const int BatteryLevel, const int switchState, const char* defaultname, const int unitCode)
+void CDomoticzHardwareBase::SendGeneralSwitch(const int NodeID, const int ChildID, const int BatteryLevel, const int SwitchState, const int Level, const std::string &defaultname, const int RssiLevel)
 {
 	_tGeneralSwitch gSwitch;
 	gSwitch.id = NodeID;
-	gSwitch.unitcode = unitCode;
-	gSwitch.cmnd = switchState;
-	sDecodeRXMessage(this, (const unsigned char *)&gSwitch, defaultname, BatteryLevel);
+	gSwitch.unitcode = ChildID;
+	gSwitch.cmnd = SwitchState;
+	gSwitch.level = Level;
+	gSwitch.rssi = RssiLevel;
+	sDecodeRXMessage(this, (const unsigned char *)&gSwitch, defaultname.c_str(), BatteryLevel);
 }
 
 void CDomoticzHardwareBase::SendMoistureSensor(const int NodeID, const int BatteryLevel, const int mLevel, const std::string &defaultname)
