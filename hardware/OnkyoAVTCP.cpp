@@ -12,7 +12,6 @@
 #include "../main/WebServer.h"
 
 #include <sstream>
-#include <map>
 
 #define RETRY_DELAY 30
 
@@ -163,8 +162,9 @@ bool OnkyoAVTCP::StartHardware()
 	m_bIsStarted=true;
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&OnkyoAVTCP::Do_Work, this)));
-	return (m_thread!=NULL);
+	m_thread = std::make_shared<std::thread>(&OnkyoAVTCP::Do_Work, this);
+	SetThreadName(m_thread->native_handle(), "OnkyoAVTCP");
+	return (m_thread != nullptr);
 }
 
 bool OnkyoAVTCP::StopHardware()
@@ -174,6 +174,7 @@ bool OnkyoAVTCP::StopHardware()
 		if (m_thread)
 		{
 			m_thread->join();
+			m_thread.reset();
 		}
 	}
 	catch (...)
@@ -196,7 +197,7 @@ bool OnkyoAVTCP::StopHardware()
 
 void OnkyoAVTCP::OnConnect()
 {
-	_log.Log(LOG_STATUS,"OnkyoAVTCP: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS,"OnkyoAVTCP: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bDoRestart=false;
 	m_bIsStarted=true;
 
@@ -241,7 +242,6 @@ void OnkyoAVTCP::Do_Work()
 
 void OnkyoAVTCP::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	ParseData(pData,length);
 }
 
@@ -260,7 +260,7 @@ void OnkyoAVTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "OnkyoAVTCP: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "OnkyoAVTCP: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||
@@ -284,7 +284,7 @@ bool OnkyoAVTCP::WriteToHardware(const char *pdata, const unsigned char length)
 	std::string message = "";
 
 	if (packettype == pTypeGeneralSwitch) {
-		_tGeneralSwitch *xcmd = (_tGeneralSwitch*)pdata;
+		const _tGeneralSwitch *xcmd = reinterpret_cast<const _tGeneralSwitch*>(pdata);
 		int ID = xcmd->id;
 		int level = xcmd->level;
 		char buf[9];
@@ -461,7 +461,7 @@ void OnkyoAVTCP::EnsureSwitchDevice(int ID, const char *options)
 	std::vector<std::vector<std::string> > result;
 	std::string options_str;
 	result = m_sql.safe_query("SELECT ID FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%08X')", m_HwdID, ID);
-	if (result.size() == 0) {
+	if (result.empty()) {
 		if (!options && switch_types[ID].options) {
 			options_str = m_sql.FormatDeviceOptions(m_sql.BuildDeviceOptions(switch_types[ID].options, false));
 			options = options_str.c_str();
@@ -479,8 +479,6 @@ void OnkyoAVTCP::EnsureSwitchDevice(int ID, const char *options)
 std::string OnkyoAVTCP::BuildSelectorOptions(const std::string & names, const std::string & ids)
 {
 	std::map<std::string, std::string> optionsMap;
-
-	std::vector<std::string>::iterator n_itt, id_itt;
 	optionsMap.insert(std::pair<std::string, std::string>("LevelOffHidden", "true"));
 	optionsMap.insert(std::pair<std::string, std::string>("SelectorStyle", "1"));
 	optionsMap.insert(std::pair<std::string, std::string>("LevelNames", names));
@@ -582,7 +580,6 @@ bool OnkyoAVTCP::ReceiveXML(const char *pData, int Len)
 			EnsureSwitchDevice(ID_SLI + id - 1, options.c_str());
 
 			// Send queries for it, and the power and volume for this zone.
-			char query[8];
 			SendPacket(switch_types[ID_SLI + id - 1].iscpCmd, "QSTN");
 			SendPacket(switch_types[ID_PWR + id - 1].iscpCmd, "QSTN");
 			SendPacket(switch_types[ID_MVL + id - 1].iscpCmd, "QSTN");
@@ -677,6 +674,10 @@ void OnkyoAVTCP::ParseData(const unsigned char *pData, int Len)
 	m_pPartialPkt = new_partial;
 }
 
+bool OnkyoAVTCP::CustomCommand(const uint64_t idx, const std::string &sCommand)
+{
+	return SendPacket(sCommand.c_str());
+}
 
 //Webserver helpers
 namespace http {

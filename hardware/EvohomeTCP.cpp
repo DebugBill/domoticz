@@ -49,7 +49,7 @@ bool CEvohomeTCP::StopHardware()
 void CEvohomeTCP::OnConnect()
 {
     CEvohomeRadio::OnConnect();
-	_log.Log(LOG_STATUS,"evohome TCP/IP: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS,"evohome TCP/IP: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bDoRestart=false;
 	m_bIsStarted=true;
 	sOnConnected(this);
@@ -122,7 +122,6 @@ void CEvohomeTCP::Do_Work()
 
 void CEvohomeTCP::OnData(const unsigned char *pData, size_t length)
 {
-    boost::lock_guard<boost::mutex> l(readQueueMutex);
 	try
 	{
 		//_log.Log(LOG_NORM,"evohome: received %ld bytes",len);
@@ -154,7 +153,7 @@ void CEvohomeTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "evohome TCP/IP: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "evohome TCP/IP: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||

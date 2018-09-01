@@ -5,16 +5,13 @@
 #include <iostream>
 #include "../main/localtime_r.h"
 
-#define RFLINK_RETRY_DELAY 30
-
 CRFLinkTCP::CRFLinkTCP(const int ID, const std::string &IPAddress, const unsigned short usIPPort):
 	m_szIPAddress(IPAddress)
 {
-	m_HwdID=ID;
-	m_bDoRestart=false;
-	m_stoprequested=false;
-	m_usIPPort=usIPPort;
-	m_retrycntr = RFLINK_RETRY_DELAY;
+	m_HwdID = ID;
+	m_bDoRestart = false;
+	m_stoprequested = false;
+	m_usIPPort = usIPPort;
 }
 
 CRFLinkTCP::~CRFLinkTCP(void)
@@ -27,27 +24,18 @@ bool CRFLinkTCP::StartHardware()
 	m_bDoRestart=false;
 
 	//force connect the next first time
-	m_retrycntr=RFLINK_RETRY_DELAY;
+	m_retrycntr = RFLINK_RETRY_DELAY;
 	m_bIsStarted=true;
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CRFLinkTCP::Do_Work, this)));
-	return (m_thread!=NULL);
+	m_thread = std::make_shared<std::thread>(&CRFLinkTCP::Do_Work, this);
+	SetThreadName(m_thread->native_handle(), "RFLinkTCP");
+	return (m_thread != nullptr);
 }
 
 bool CRFLinkTCP::StopHardware()
 {
 	m_stoprequested=true;
-	if (isConnected())
-	{
-		try {
-			disconnect();
-			close();
-		} catch(...)
-		{
-			//Don't throw from a Stop command
-		}
-	}
 	try {
 		if (m_thread)
 		{
@@ -59,6 +47,16 @@ bool CRFLinkTCP::StopHardware()
 	{
 		//Don't throw from a Stop command
 	}
+	if (isConnected())
+	{
+		try {
+			disconnect();
+			close();
+		} catch(...)
+		{
+			//Don't throw from a Stop command
+		}
+	}
 
 	m_bIsStarted=false;
 	return true;
@@ -66,7 +64,7 @@ bool CRFLinkTCP::StopHardware()
 
 void CRFLinkTCP::OnConnect()
 {
-	_log.Log(LOG_STATUS,"RFLink: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS,"RFLink: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bDoRestart=false;
 	m_bIsStarted=true;
 	m_rfbufferpos = 0;
@@ -153,11 +151,10 @@ void CRFLinkTCP::Do_Work()
 		}
 	}
 	_log.Log(LOG_STATUS,"RFLink: TCP/IP Worker stopped...");
-} 
+}
 
 void CRFLinkTCP::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	ParseData((const char*)pData,length);
 }
 
@@ -176,7 +173,7 @@ void CRFLinkTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "RFLink: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "RFLink: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||

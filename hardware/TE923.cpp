@@ -37,26 +37,21 @@ bool CTE923::StartHardware()
 {
 	Init();
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CTE923::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>(&CTE923::Do_Work, this);
+	SetThreadName(m_thread->native_handle(), "TE923");
 	m_bIsStarted=true;
 	sOnConnected(this);
 
-	return (m_thread!=NULL);
+	return (m_thread != nullptr);
 }
 
 bool CTE923::StopHardware()
 {
-	/*
-    m_stoprequested=true;
 	if (m_thread)
-		m_thread->join();
-	return true;
-    */
-	if (m_thread!=NULL)
 	{
-		assert(m_thread);
 		m_stoprequested = true;
 		m_thread->join();
+		m_thread.reset();
 	}
 	m_bIsStarted=false;
     return true;
@@ -101,7 +96,7 @@ void CTE923::GetSensorDetails()
 	{
 		//give it one more change!
 		_te923tool.CloseDevice();
-		boost::this_thread::sleep( boost::posix_time::milliseconds(500) );
+		sleep_milliseconds(500);
 
 		CTE923Tool _te923tool2;
 		if (!_te923tool2.OpenDevice())
@@ -193,6 +188,7 @@ void CTE923::GetSensorDetails()
 		tsen.WIND.packetlength=sizeof(tsen.WIND)-1;
 		tsen.WIND.packettype=pTypeWIND;
 		tsen.WIND.subtype=sTypeWINDNoTemp;
+		dev.batteryWind = 1;
 		if (dev.batteryWind)
 			tsen.WIND.battery_level=9;
 		else

@@ -31,23 +31,14 @@ bool CZiBlueTCP::StartHardware()
 	m_bIsStarted=true;
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CZiBlueTCP::Do_Work, this)));
-	return (m_thread!=NULL);
+	m_thread = std::make_shared<std::thread>(&CZiBlueTCP::Do_Work, this);
+	SetThreadName(m_thread->native_handle(), "ZiBlueTCP");
+	return (m_thread != nullptr);
 }
 
 bool CZiBlueTCP::StopHardware()
 {
 	m_stoprequested=true;
-	if (isConnected())
-	{
-		try {
-			disconnect();
-			close();
-		} catch(...)
-		{
-			//Don't throw from a Stop command
-		}
-	}
 	try {
 		if (m_thread)
 		{
@@ -59,6 +50,16 @@ bool CZiBlueTCP::StopHardware()
 	{
 		//Don't throw from a Stop command
 	}
+	if (isConnected())
+	{
+		try {
+			disconnect();
+			close();
+		} catch(...)
+		{
+			//Don't throw from a Stop command
+		}
+	}
 
 	m_bIsStarted=false;
 	return true;
@@ -66,7 +67,7 @@ bool CZiBlueTCP::StopHardware()
 
 void CZiBlueTCP::OnConnect()
 {
-	_log.Log(LOG_STATUS,"ZiBlue: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS,"ZiBlue: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bDoRestart=false;
 	m_bIsStarted=true;
 	m_rfbufferpos = 0;
@@ -154,11 +155,10 @@ void CZiBlueTCP::Do_Work()
 		}
 	}
 	_log.Log(LOG_STATUS,"ZiBlue: TCP/IP Worker stopped...");
-} 
+}
 
 void CZiBlueTCP::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	ParseData((const char*)pData,length);
 }
 
@@ -177,7 +177,7 @@ void CZiBlueTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "ZiBlue: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "ZiBlue: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||

@@ -35,23 +35,14 @@ bool S0MeterTCP::StartHardware()
 	ReloadLastTotals();
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&S0MeterTCP::Do_Work, this)));
-	return (m_thread!=NULL);
+	m_thread = std::make_shared<std::thread>(&S0MeterTCP::Do_Work, this);
+	SetThreadName(m_thread->native_handle(), "S0MeterTCP");
+	return (m_thread != nullptr);
 }
 
 bool S0MeterTCP::StopHardware()
 {
 	m_stoprequested=true;
-	if (isConnected())
-	{
-		try {
-			disconnect();
-			close();
-		} catch(...)
-		{
-			//Don't throw from a Stop command
-		}
-	}
 	try {
 		if (m_thread)
 		{
@@ -63,6 +54,16 @@ bool S0MeterTCP::StopHardware()
 	{
 		//Don't throw from a Stop command
 	}
+	if (isConnected())
+	{
+		try {
+			disconnect();
+			close();
+		} catch(...)
+		{
+			//Don't throw from a Stop command
+		}
+	}
 
 	m_bIsStarted=false;
 	return true;
@@ -70,7 +71,7 @@ bool S0MeterTCP::StopHardware()
 
 void S0MeterTCP::OnConnect()
 {
-	_log.Log(LOG_STATUS,"S0 Meter: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS,"S0 Meter: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bDoRestart=false;
 	m_bIsStarted=true;
 	m_bufferpos = 0;
@@ -134,7 +135,6 @@ bool S0MeterTCP::WriteToHardware(const char *pdata, const unsigned char length)
 
 void S0MeterTCP::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	ParseData((const unsigned char*)pData,length);
 }
 
@@ -153,7 +153,7 @@ void S0MeterTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "S0 Meter: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "S0 Meter: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||

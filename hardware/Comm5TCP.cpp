@@ -1,16 +1,21 @@
 #include "stdafx.h"
 #include "Comm5TCP.h"
+#include "../main/localtime_r.h"
 #include "../main/Logger.h"
 #include "../main/Helper.h"
-#include "../main/localtime_r.h"
-#include "../main/mainworker.h"
-
-#include <iostream>
-
-#include <boost/lexical_cast.hpp>
+#include "../main/RFXtrx.h"
 
 #define RETRY_DELAY 30
 #define Max_Comm5_MA_Relais 16
+
+/*
+   This driver allows Domoticz to control any I/O module from the MA-5xxx-2 Family, including the fiber-optics (FX)
+   variations.
+   https://www.comm5.com.br/en/products/io-modules/
+   These modules provide relays and digital sensors in the range of 5-30V DC or 70-240V AC selectable by dip switches
+   for each individual input.
+
+*/
 
 static inline std::string &rtrim(std::string &s) {
 	s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
@@ -50,23 +55,23 @@ bool Comm5TCP::StartHardware()
 
 	//force connect the next first time
 	m_bIsStarted = true;
-	m_rxbufferpos = 0;
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&Comm5TCP::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>(&Comm5TCP::Do_Work, this);
+	SetThreadName(m_thread->native_handle(), "Comm5TCP");
 
 	_log.Log(LOG_STATUS, "Comm5 MA-5XXX: Started");
 
-	return (m_thread != NULL);
+	return (m_thread != nullptr);
 }
 
 bool Comm5TCP::StopHardware()
 {
-	if (m_thread != NULL)
+	if (m_thread)
 	{
-		assert(m_thread);
 		m_stoprequested = true;
 		m_thread->join();
+		m_thread.reset();
 	}
 	m_bIsStarted = false;
 	return true;
@@ -74,7 +79,7 @@ bool Comm5TCP::StopHardware()
 
 void Comm5TCP::OnConnect()
 {
-	_log.Log(LOG_STATUS, "Comm5 MA-5XXX: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS, "Comm5 MA-5XXX: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bIsStarted = true;
 	notificationEnabled = false;
 
@@ -101,7 +106,6 @@ void Comm5TCP::Do_Work()
 			bFirstTime = false;
 			if (!mIsConnected)
 			{
-				m_rxbufferpos = 0;
 				connect(m_szIPAddress, m_usIPPort);
 			}
 		}
@@ -118,7 +122,7 @@ void Comm5TCP::Do_Work()
 	_log.Log(LOG_STATUS, "Comm5 MA-5XXX: TCP/IP Worker stopped...");
 }
 
-void Comm5TCP::processSensorData(const std::string& line) 
+void Comm5TCP::processSensorData(const std::string& line)
 {
 	std::vector<std::string> tokens = tokenize(line);
 	if (tokens.size() < 2)
@@ -128,7 +132,7 @@ void Comm5TCP::processSensorData(const std::string& line)
 	for (int i = 0; i < 16; ++i) {
 		bool on = (sensorbitfield & (1 << i)) != 0 ? true : false;
 		if (((lastKnownSensorState & (1 << i)) ^ (sensorbitfield & (1 << i))) || initSensorData) {
-			SendSwitch((i + 1) << 8, 1, 255, on, 0, "Sensor " + boost::lexical_cast<std::string>(i + 1));
+			SendSwitchUnchecked((i + 1) << 8, 1, 255, on, 0, "Sensor " + std::to_string(i + 1));
 		}
 	}
 	lastKnownSensorState = sensorbitfield;
@@ -152,12 +156,12 @@ void Comm5TCP::ParseData(const unsigned char* data, const size_t len)
 			unsigned int relaybitfield = ::strtol(tokens[1].c_str(), 0, 16);
 			for (int i = 0; i < 16; ++i) {
 				bool on = (relaybitfield & (1 << i)) != 0 ? true : false;
-				SendSwitch(i + 1, 1, 255, on, 0, "Relay " + boost::lexical_cast<std::string>(i + 1));
+				SendSwitch(i + 1, 1, 255, on, 0, "Relay " + std::to_string(i + 1));
 			}
 		}
 		else if (startsWith(line, "210") && (!startsWith(line, "210 OK"))) {
 			processSensorData(line);
-		} 
+		}
 	}
 
 	// Trim consumed bytes.
@@ -180,7 +184,7 @@ void Comm5TCP::enableNotifications()
 	notificationEnabled = true;
 }
 
-bool Comm5TCP::WriteToHardware(const char *pdata, const unsigned char length)
+bool Comm5TCP::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 {
 	const tRBUF *pSen = reinterpret_cast<const tRBUF*>(pdata);
 
@@ -199,9 +203,9 @@ bool Comm5TCP::WriteToHardware(const char *pdata, const unsigned char length)
 			return false;
 
 		if (pSen->LIGHTING2.cmnd == light2_sOff)
-			write("RESET " + boost::lexical_cast<std::string>(Relay) + "\n");
+			write("RESET " + std::to_string(Relay) + '\n');
 		else
-			write("SET " + boost::lexical_cast<std::string>(Relay) + "\n");
+			write("SET " + std::to_string(Relay) + '\n');
 
 		return true;
 	}
@@ -210,7 +214,6 @@ bool Comm5TCP::WriteToHardware(const char *pdata, const unsigned char length)
 
 void Comm5TCP::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	ParseData(pData, length);
 }
 
@@ -228,7 +231,7 @@ void Comm5TCP::OnError(const boost::system::error_code& error)
 	case boost::asio::error::access_denied:
 	case boost::asio::error::host_unreachable:
 	case boost::asio::error::timed_out:
-		_log.Log(LOG_ERROR, "Comm5 MA-5XXX: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "Comm5 MA-5XXX: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 		break;
 	case boost::asio::error::eof:
 	case boost::asio::error::connection_reset:
