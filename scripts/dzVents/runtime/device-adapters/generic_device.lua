@@ -49,6 +49,28 @@ return {
 
 		local _states = adapterManager.states
 
+<<<<<<< HEAD:scripts/dzVents/runtime/device-adapters/generic_device.lua
+
+=======
+		if (data.lastUpdate == '' or data.lastUpdate == nil) then
+			local level
+			if (data.name ~= nil and data.name ~= '') then
+				level = utils.LOG_ERROR
+			else
+				level = utils.LOG_DEBUG
+			end
+			utils.log('Discarding device. No last update info found: ' .. domoticz.utils._.str(data), level)
+			return nil
+		end
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/device-adapters/generic_device.lua
+
+		device.isDevice = false
+		device.isScene = false
+		device.isGroup = false
+		device.isTimer = false
+		device.isVariable = false
+		device.isHTTPResponse = false
+		device.isSecurity = false
 
 
 		if (data.baseType == 'device') then
@@ -77,13 +99,30 @@ return {
 			device['lastUpdate'] = Time(data.lastUpdate)
 			device['rawData'] = data.rawData
 			device['nValue'] = data.data._nValue
+
+			device['cancelQueuedCommands'] = function()
+				domoticz.sendCommand('Cancel', {
+					type = 'device',
+					idx = data.id
+				})
+			end
+
+			device.isDevice = true
 		end
 
 		if (data.baseType == 'group' or data.baseType == 'scene') then
+			device['description'] = data.description
 			device['lastUpdate'] = Time(data.lastUpdate)
 			device['rawData'] = { [1] = data.data._state }
-		end
+			device['changed'] = data.changed
+			device['cancelQueuedCommands'] = function()
+				domoticz.sendCommand('Cancel', {
+					type = 'scene',
+					idx = data.id
+				})
+			end
 
+		end
 
 		setStateAttribute(data.data._state, device, _states)
 

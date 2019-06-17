@@ -18,7 +18,15 @@ local function Variable(domoticz, data)
 		['type'] = data.variableType,
 		['changed'] = data.changed,
 		['id'] = data.id,
-		['lastUpdate'] = Time(data.lastUpdate)
+		['lastUpdate'] = Time(data.lastUpdate),
+		['baseType'] = domoticz.BASETYPE_VARIABLE,
+		isVariable = true,
+		isHTTPResponse = false,
+	    isDevice = false,
+	    isScene = false,
+	    isGroup = false,
+	    isTimer = false,
+		isSecurity = false
 	}
 
 	if (data.variableType == 'float' or data.variableType == 'integer') then
@@ -47,6 +55,7 @@ local function Variable(domoticz, data)
 
 	-- send an update to domoticz
 	function self.set(value)
+<<<<<<< HEAD:scripts/dzVents/runtime/Variable.lua
 		-- domoticz.sendCommand('Variable:' .. data.name, tostring(value))
 		-- using url call otherwise no follow-up event is triggered for this variable
 
@@ -66,6 +75,23 @@ local function Variable(domoticz, data)
 				.. '&idx=' .. data.id
 
 		domoticz.openURL(url)
+=======
+		if (value == nil) then value = '' end
+
+		-- return TimedCommand(domoticz, 'Variable:' .. data.name, tostring(value), 'variable')
+		return TimedCommand(domoticz, 'Variable', {
+			idx = data.id,
+			_trigger = true,
+			value = tostring(value)
+		}, 'variable')
+	end
+
+	function self.cancelQueuedCommands()
+		domoticz.sendCommand('Cancel', {
+			type = 'variable',
+			idx = data.id
+		})
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/Variable.lua
 	end
 
 	return self

@@ -390,6 +390,10 @@ local testData = {
 			["data"] = {
 				_state = "Off"
 			},
+			["deviceIDs"] = {
+				[1] = 1;
+				[2] = 2;
+			};
 			["lastUpdate"] = "2017-04-18 15:31:19";
 		},
 		[18] = {
@@ -400,6 +404,10 @@ local testData = {
 			["data"] = {
 				_state = "On"
 			},
+			["deviceIDs"] = {
+				[1] = 3;
+				[2] = 4;
+			};
 			["lastUpdate"] = "2017-04-18 15:31:26";
 		},
 		[19] = {

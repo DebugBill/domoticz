@@ -3,7 +3,7 @@ _G._ = require 'lodash'
 
 local scriptPath = ''
 --package.path = package.path .. ";../?.lua"
-package.path = package.path .. ";../../?.lua" -- two folders up
+package.path = package.path .. ";../../?.lua;../../../scripts/lua/?.lua;"
 package.path = package.path .. ";../?.lua;" .. scriptPath .. '/?.lua;../device-adapters/?.lua;'
 
 
@@ -20,12 +20,15 @@ describe('Event dispatching', function()
 			SunsetInMinutes = 'sunsetmin'
 		}
 
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testScriptdzVentsDispatching.lua
 		_G.globalvariables = {
 			['radix_separator'] = '.',
 			['Security'] = 'sec',
 			['domoticz_listening_port'] = '8080',
 			['script_path'] = scriptPath
 		}
+=======
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testScriptdzVentsDispatching.lua
 
 	end)
 
@@ -109,6 +112,24 @@ describe('Event dispatching', function()
 				["name"] = "myVar1";
 			}
 		}
+		_G.globalvariables = {
+			['radix_separator'] = '.',
+			['Security'] = 'sec',
+			['domoticz_listening_port'] = '8080',
+			['script_path'] = scriptPath,
+			['runtime_path'] = '',
+			['isTimeEvent'] = false,
+			['currentTime'] = '2017-08-17 12:13:14.123'
+		}
+		_G.securityupdates = {
+            'Armed Away'
+        }
+
+		_G.httpresponse = {{
+			callback='trigger1',
+			statusCode = 200
+		}}
+
 	end)
 
 	after_each(function()
@@ -116,38 +137,99 @@ describe('Event dispatching', function()
 		package.loaded['dzVents'] = nil
 	end)
 
-	it('should dispatch device events', function()
+
+	it("should dispatch timer events", function()
 		_G.commandArray = {}
-		_G.globalvariables['script_reason'] = 'device'
-
+		_G.globalvariables['isTimeEvent'] = true
 		local main = require('dzVents')
-
 		assert.is_same({
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testScriptdzVentsDispatching.lua
 			{ ["onscript1"] = "Off" },
 			{ ["onscript1"] = "Set Level 10" },
 			{ ["SendNotification"] = 'Yo##0#pushover##' }
 		}, main)
 	end)
 
+=======
+			{
+				["onscript1"] = "Off"
+			},
+			{
+				['Scene:scene 2'] = 'On'
+			},
+			{
+				["SendNotification"] = 'Me#every minute timer every minute script_timer_single#0#pushover##'
+		 	},
+			{
+				["Scene:scene 1"] = "On"
+			},
+			{
+				["onscript1"]="Off"
+			},
+			{
+				["onscript1"]="Set Level 10"
+			},
+			{
+				["SendNotification"]="Yo##0#pushover##"
+			},
+			{
+				["Variable"]={["value"]="10", ["idx"]=1, ["_trigger"]=true}
+			},
+			{
+				["SendNotification"]="Me#Armed Away#0#pushover##"
+			},
+			{
+				["Scene:myscene1"]="Off"
+			},
+			{
+				["Group:mygroup1"]="On"
+			},
+			{
+				["OpenURL"]={["URL"]="test", ["method"]="GET"}
+			},
 
-	it("should dispatch timer events", function()
-		_G.commandArray = {}
-		_G.globalvariables['script_reason'] = 'time'
-		local main = require('dzVents')
-		assert.is_same({
-			{ ["onscript1"] = "Off" },
-			{ ['Scene:scene 2'] = 'On' },
-			{ ["SendNotification"] = "Me#timer every minute#0#pushover##" },
-			{ ["Scene:scene 1"] = "On" }
+
 		}, main)
 	end)
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testScriptdzVentsDispatching.lua
 
-	it("should dispatch variable events", function()
+
+	it('should dispatch non-timer events', function()
 		_G.commandArray = {}
-		_G.globalvariables['script_reason'] = 'uservariable'
+
 		local main = require('dzVents')
+<<<<<<< HEAD:scripts/dzVents/runtime/tests/testScriptdzVentsDispatching.lua
 		assert.is_same({
 			{ ['OpenURL'] = 'http://127.0.0.1:8080/json.htm?type=command&param=updateuservariable&vname=myVar1&vtype=0&vvalue=10&idx=1' }
+=======
+
+		assert.is_same(
+		{
+			{
+				["onscript1"]="Off"
+			},
+			{
+				["onscript1"]="Set Level 10"
+			},
+			{
+				["SendNotification"]="Yo##0#pushover##"
+			},
+			{
+				["Variable"]={["value"]="10", ["idx"]=1, ["_trigger"]=true}
+			},
+			{
+				["SendNotification"]="Me#Armed Away#0#pushover##"
+			},
+			{
+				["Scene:myscene1"]="Off"
+			},
+			{
+				["Group:mygroup1"]="On"
+			},
+			{
+				["OpenURL"]={["URL"]="test", ["method"]="GET"}
+			}
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1:dzVents/runtime/tests/testScriptdzVentsDispatching.lua
 		}, main)
 	end)
 
