@@ -98,7 +98,11 @@ namespace http {
 		void CProxyClient::ContinueConnect(const boost::system::error_code& error)
 		{
 			std::string address = "domoproxy.domoticz.com";
+<<<<<<< HEAD
 			std::string port = "9999";
+=======
+			std::string port = "443";
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			boost::system::error_code ec;
 
 			if (error) {
@@ -134,7 +138,7 @@ namespace http {
 					boost::bind(&CProxyClient::handle_handshake, shared_from_this(),
 						boost::asio::placeholders::error));
 			}
-		else if (endpoint_iterator != boost::asio::ip::tcp::resolver::iterator())
+			else if (endpoint_iterator != boost::asio::ip::tcp::resolver::iterator())
 			{
 				_socket->lowest_layer().close();
 				boost::asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
@@ -165,6 +169,7 @@ namespace http {
 				return;
 			}
 			boost::unique_lock<boost::mutex>(writeMutex);
+<<<<<<< HEAD
 			if (bytes_transferred < writePdu->length()) {
 				_log.Log(LOG_ERROR, "PROXY: Only wrote %ld of %ld bytes.", bytes_transferred, writePdu->length());
 			}
@@ -176,6 +181,33 @@ namespace http {
 			if (!writeQ.empty()) {
 				SocketWrite(writeQ.front());
 				writeQ.pop();
+=======
+			if (bytes_transferred != SockWriteBuf.length()) {
+				_log.Log(LOG_ERROR, "Only wrote %d of %d bytes.", (int)bytes_transferred, (int)SockWriteBuf.length());
+			}
+			SockWriteBuf.clear();
+			switch (connection_status) {
+			case status_connecting:
+				// a write occurred meanwhile a reconnect has been issued
+				break;
+			case status_httpmode:
+				// we now wait for the webserver response
+				break;
+			case status_connected:
+				if (bytes_transferred < SockWriteBuf.length()) {
+					_log.Log(LOG_ERROR, "PROXY: Only wrote %d of %d bytes.", (int)bytes_transferred, (int)SockWriteBuf.length());
+				}
+				if (error) {
+					_log.Log(LOG_ERROR, "PROXY: Write failed, code = %d, %s", error.value(), error.message().c_str());
+				}
+				write_in_progress = false;
+				if (!writeQ.empty()) {
+					ProxyPdu *pdu = writeQ.front();
+					writeQ.pop();
+					SocketWrite(pdu);
+				}
+				break;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			}
 		}
 
@@ -255,7 +287,7 @@ namespace http {
 
 			_socket->async_read_some(buf,
 				boost::bind(&CProxyClient::handle_read, shared_from_this(), boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
-				);
+			);
 		}
 
 		void CProxyClient::GetRequest(const std::string &originatingip, boost::asio::mutable_buffers_1 _buf, http::server::reply &reply_)
@@ -359,7 +391,7 @@ namespace http {
 			}
 			else {
 				// unknown subsystem
-				_log.Log(LOG_ERROR, "PROXY: Got Request pdu for unknown subsystem %d.", subsystem);
+				_log.Log(LOG_ERROR, "PROXY: Got Request pdu for unknown subsystem %ld.", subsystem);
 			}
 		}
 
@@ -462,6 +494,7 @@ namespace http {
 
 			if (!authenticated) {
 				_log.Log(LOG_ERROR, "PROXY: Could not log in to slave: %s", reason.c_str());
+				return;
 			}
 			DomoticzTCP *slave = sharedData.findSlaveConnection(instanceparam);
 			if (slave) {
@@ -538,6 +571,7 @@ namespace http {
 			CValueLengthPart part(pdu);
 
 			switch (pdu._type) {
+<<<<<<< HEAD
 			ONPDU(PDU_REQUEST)
 			ONPDU(PDU_ASSIGNKEY)
 			ONPDU(PDU_ENQUIRE)
@@ -548,6 +582,21 @@ namespace http {
 			ONPDU(PDU_SERV_RECEIVE)
 			ONPDU(PDU_SERV_SEND)
 			ONPDU(PDU_SERV_ROSTERIND)
+=======
+				ONPDU(PDU_REQUEST)
+					ONPDU(PDU_ASSIGNKEY)
+					ONPDU(PDU_ENQUIRE)
+					ONPDU(PDU_AUTHRESP)
+					ONPDU(PDU_SERV_CONNECT)
+					ONPDU(PDU_SERV_DISCONNECT)
+					ONPDU(PDU_SERV_CONNECTRESP)
+					ONPDU(PDU_SERV_RECEIVE)
+					ONPDU(PDU_SERV_SEND)
+					ONPDU(PDU_SERV_ROSTERIND)
+					ONPDU(PDU_WS_OPEN)
+					ONPDU(PDU_WS_CLOSE)
+					ONPDU(PDU_WS_RECEIVE)
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			default:
 				_log.Log(LOG_ERROR, "PROXY: pdu type: %d not expected.", pdu._type);
 				break;
@@ -563,7 +612,9 @@ namespace http {
 			timer_.cancel();
 			if (!error)
 			{
+				const char *data;
 				_readbuf.commit(bytes_transferred);
+<<<<<<< HEAD
 				const char *data = boost::asio::buffer_cast<const char*>(_readbuf.data());
 				ProxyPdu pdu(data, _readbuf.size());
 				if (pdu.Disconnected()) {
@@ -572,6 +623,29 @@ namespace http {
 				}
 				PduHandler(pdu);
 				_readbuf.consume(pdu.length() + 9); // 9 is header size
+=======
+				switch (connection_status) {
+				case status_httpmode:
+					data = boost::asio::buffer_cast<const char*>(_readbuf.data());
+					if (parse_response(data, _readbuf.size())) {
+						_readbuf.consume(_readbuf.size());
+						connection_status = status_connected;
+						LoginToService();
+					}
+					break;
+				case status_connected:
+					data = boost::asio::buffer_cast<const char*>(_readbuf.data());
+					CWebsocketFrame frame;
+					if (frame.Parse((const unsigned char *)data, _readbuf.size())) {
+						ProxyPdu pdu(frame.Payload().c_str(), frame.Payload().length());
+						if (!pdu.Disconnected()) {
+							PduHandler(pdu);
+							_readbuf.consume(frame.Consumed());
+						}
+					}
+					break;
+				}
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 				ReadMore();
 			}
 			else
@@ -613,9 +687,9 @@ namespace http {
 		{
 		}
 
-		CProxyManager::CProxyManager(const std::string& doc_root, http::server::cWebem *webEm, tcp::server::CTCPServer *domServ)
+		CProxyManager::CProxyManager(const std::string& doc_root, http::server::cWebem *webEm, tcp::server::CTCPServer *domServ):
+			m_pDocRoot(doc_root)
 		{
-			m_pDocRoot = doc_root;
 			m_pWebEm = webEm;
 			m_pDomServ = domServ;
 			m_thread = NULL;
@@ -639,7 +713,12 @@ namespace http {
 		void CProxyManager::StartThread()
 		{
 			try {
+<<<<<<< HEAD
 				boost::asio::ssl::context ctx(io_service, boost::asio::ssl::context::sslv23);
+=======
+				//boost::asio::ssl::context ctx(io_service, boost::asio::ssl::context::tlsv12_client);
+				boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 				ctx.set_verify_mode(boost::asio::ssl::verify_none);
 
 				proxyclient.reset(new CProxyClient(io_service, ctx, m_pWebEm));
@@ -698,7 +777,7 @@ namespace http {
 			}
 		}
 
-		void CProxySharedData::SetInstanceId(std::string instanceid)
+		void CProxySharedData::SetInstanceId(const std::string &instanceid)
 		{
 			_instanceid = instanceid;
 			m_sql.UpdatePreferencesVar("MyDomoticzInstanceId", _instanceid);
@@ -747,7 +826,7 @@ namespace http {
 
 		void CProxySharedData::AddTCPClient(DomoticzTCP *client)
 		{
-			for (std::vector<DomoticzTCP *>::iterator it = TCPClients.begin(); it != TCPClients.end(); it++) {
+			for (std::vector<DomoticzTCP *>::iterator it = TCPClients.begin(); it != TCPClients.end(); ++it) {
 				if ((*it) == client) {
 					return;
 				}

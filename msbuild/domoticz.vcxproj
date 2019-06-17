@@ -14,7 +14,7 @@
     <ProjectGuid>{6AD96441-5B2C-467B-AAB6-A1B8368D503A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>domoticz</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -58,8 +58,13 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
+<<<<<<< HEAD
       <PreprocessorDefinitions>WIN32;ENABLE_PYTHON;_DEBUG;PTW32_STATIC_LIB;WITH_OPENZWAVE;OPENZWAVE_USEDLL;WWW_ENABLE_SSL;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./Windows Libraries/Boost/boost_1_63_0;./libusb;../MQTT;..\hardware\openzwave;./Windows Libraries/openssl;./Windows Libraries/Curl;./Windows Libraries/pthread;../hardware/plugins/Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+=======
+      <PreprocessorDefinitions>WIN32;NOMINMAX;ENABLE_PYTHON;_DEBUG;PTW32_STATIC_LIB;WITH_OPENZWAVE;OPENZWAVE_USEDLL;WWW_ENABLE_SSL;_CONSOLE;BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./Windows Libraries/Boost;./libusb;../MQTT;..\hardware\openzwave;..\zip;..\zlib;./Windows Libraries/openssl;./Windows Libraries/Curl;./Windows Libraries/pthread;../hardware/plugins/Include;../tinyxpath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
     </ClCompile>
@@ -85,9 +90,15 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+<<<<<<< HEAD
       <PreprocessorDefinitions>WIN32;ENABLE_PYTHON;NDEBUG;PTW32_STATIC_LIB;WITH_OPENZWAVE;OPENZWAVE_USEDLL;_CONSOLE;WWW_ENABLE_SSL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./Windows Libraries/Boost/boost_1_63_0;./libusb;../MQTT;..\hardware\openzwave;./Windows Libraries/openssl;./Windows Libraries/Curl;./Windows Libraries/pthread;../hardware/plugins/Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+=======
+      <PreprocessorDefinitions>WIN32;NOMINMAX;ENABLE_PYTHON;NDEBUG;PTW32_STATIC_LIB;WITH_OPENZWAVE;OPENZWAVE_USEDLL;_CONSOLE;WWW_ENABLE_SSL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./Windows Libraries/Boost;./libusb;../MQTT;..\hardware\openzwave;..\zip;..\zlib;./Windows Libraries/openssl;./Windows Libraries/Curl;./Windows Libraries/pthread;../hardware/plugins/Include;../tinyxpath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/d2guardspecload %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -270,10 +281,10 @@
     <None Include="..\www\js\d3.min.js.gz" />
     <None Include="..\www\js\dataTables.tableTools.min.js.gz" />
     <None Include="..\www\js\date.format.js.gz" />
-    <None Include="..\www\js\domoticz.js.gz" />
-    <None Include="..\www\js\domoticzblocks.js.gz" />
-    <None Include="..\www\js\domoticzblocks_messages_en.js.gz" />
-    <None Include="..\www\js\domoticzdevices.js.gz" />
+    <None Include="..\www\js\domoticz.js" />
+    <None Include="..\www\js\domoticzblocks.js" />
+    <None Include="..\www\js\domoticzblocks_messages_en.js" />
+    <None Include="..\www\js\domoticzdevices.js" />
     <None Include="..\www\js\en_compressed.js.gz" />
     <None Include="..\www\js\export-csv.js.gz" />
     <None Include="..\www\js\FileSaver.js.gz" />
@@ -330,16 +341,9 @@
     <None Include="..\www\ozwcp\cp.html" />
     <None Include="..\www\ozwcp\cp.js" />
     <None Include="..\www\ozwcp\ozwcp.html" />
-    <None Include="..\www\secpanel\css\font.less" />
-    <None Include="..\www\secpanel\css\reset.less" />
-    <None Include="..\www\secpanel\css\style.less" />
-    <None Include="..\www\secpanel\font\Audiowide.eot" />
-    <None Include="..\www\secpanel\font\Audiowide.svg" />
-    <None Include="..\www\secpanel\font\Audiowide.woff" />
-    <None Include="..\www\secpanel\font\Digital.eot" />
-    <None Include="..\www\secpanel\font\Digital.svg" />
-    <None Include="..\www\secpanel\font\Digital.woff" />
+    <None Include="..\www\secpanel\css\style.css" />
     <None Include="..\www\secpanel\index.html" />
+<<<<<<< HEAD
     <None Include="..\www\secpanel\js\ion.sound.min.js.gz" />
     <None Include="..\www\secpanel\js\less.js.gz" />
     <None Include="..\www\secpanel\media\arm.aac" />
@@ -350,6 +354,9 @@
     <None Include="..\www\secpanel\media\key.ogg" />
     <None Include="..\www\secpanel\media\wrongcode.aac" />
     <None Include="..\www\secpanel\media\wrongcode.ogg" />
+=======
+    <None Include="..\www\styles\default\base.css" />
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
     <None Include="..\www\styles\default\custom.css" />
     <None Include="..\www\styles\element-dark\custom.css" />
     <None Include="..\www\styles\element-light\custom.css" />
@@ -419,6 +426,7 @@
     <ClInclude Include="..\hardware\ASyncTCP.h" />
     <ClInclude Include="..\hardware\AtagOne.h" />
     <ClInclude Include="..\hardware\Comm5Serial.h" />
+    <ClInclude Include="..\hardware\Comm5SMTCP.h" />
     <ClInclude Include="..\hardware\Comm5TCP.h" />
     <ClInclude Include="..\hardware\csocket.h" />
     <ClInclude Include="..\hardware\CurrentCostMeterBase.h" />
@@ -428,8 +436,10 @@
     <ClInclude Include="..\hardware\DarkSky.h" />
     <ClInclude Include="..\hardware\DavisLoggerSerial.h" />
     <ClInclude Include="..\hardware\DenkoviSmartdenLan.h" />
+    <ClInclude Include="..\hardware\DenkoviDevices.h" />
     <ClInclude Include="..\hardware\Dummy.h" />
     <ClInclude Include="..\hardware\Ec3kMeterTCP.h" />
+    <ClInclude Include="..\hardware\EcoCompteur.h" />
     <ClInclude Include="..\hardware\EcoDevices.h" />
     <ClInclude Include="..\hardware\EnOceanESP2.h" />
     <ClInclude Include="..\hardware\EnOceanESP3.h" />
@@ -442,6 +452,8 @@
     <ClInclude Include="..\hardware\FritzboxTCP.h" />
     <ClInclude Include="..\hardware\Gpio.h" />
     <ClInclude Include="..\hardware\GpioPin.h" />
+    <ClInclude Include="..\hardware\Honeywell.h" />
+    <ClInclude Include="..\hardware\NestOAuthAPI.h" />
     <ClInclude Include="..\hardware\Rtl433.h" />
     <ClInclude Include="..\hardware\SysfsGpio.h" />
     <ClInclude Include="..\hardware\HarmonyHub.h" />
@@ -510,6 +522,7 @@
     <ClInclude Include="..\hardware\SolarEdgeAPI.h" />
     <ClInclude Include="..\hardware\SolarMaxTCP.h" />
     <ClInclude Include="..\hardware\Sterbox.h" />
+    <ClInclude Include="..\hardware\Tado.h" />
     <ClInclude Include="..\hardware\TCPProxy\tcpproxy_server.h" />
     <ClInclude Include="..\hardware\TE923.h" />
     <ClInclude Include="..\hardware\TE923Tool.h" />
@@ -534,6 +547,7 @@
     <ClInclude Include="..\hardware\ASyncSerial.h" />
     <ClInclude Include="..\main\Camera.h" />
     <ClInclude Include="..\main\CmdLine.h" />
+    <ClInclude Include="..\hardware\ColorSwitch.h" />
     <ClInclude Include="..\hardware\DomoticzHardware.h" />
     <ClInclude Include="..\hardware\DomoticzInternal.h" />
     <ClInclude Include="..\hardware\DomoticzTCP.h" />
@@ -552,7 +566,6 @@
     <ClInclude Include="..\main\LuaCommon.h" />
     <ClInclude Include="..\main\LuaHandler.h" />
     <ClInclude Include="..\main\mainstructs.h" />
-    <ClInclude Include="..\main\unzip.h" />
     <ClInclude Include="..\main\unzip_iterator.h" />
     <ClInclude Include="..\main\unzip_stream.h" />
     <ClInclude Include="..\main\WebServerHelper.h" />
@@ -585,7 +598,6 @@
     <ClInclude Include="..\notifications\NotificationHTTP.h" />
     <ClInclude Include="..\notifications\NotificationKodi.h" />
     <ClInclude Include="..\notifications\NotificationLogitechMediaServer.h" />
-    <ClInclude Include="..\notifications\NotificationNma.h" />
     <ClInclude Include="..\notifications\NotificationProwl.h" />
     <ClInclude Include="..\notifications\NotificationPushalot.h" />
     <ClInclude Include="..\notifications\NotificationPushbullet.h" />
@@ -595,6 +607,10 @@
     <ClInclude Include="..\push\FibaroPush.h" />
     <ClInclude Include="..\push\GooglePubSubPush.h" />
     <ClInclude Include="..\push\HttpPush.h" />
+<<<<<<< HEAD
+=======
+    <ClInclude Include="..\push\WebsocketPush.h" />
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
     <ClInclude Include="..\push\InfluxPush.h" />
     <ClInclude Include="..\push\BasePush.h" />
     <ClInclude Include="..\webserver\fastcgi.hpp" />
@@ -602,6 +618,8 @@
     <ClInclude Include="..\webserver\proxyclient.h" />
     <ClInclude Include="..\webserver\proxycommon.h" />
     <ClInclude Include="..\zip\ioapi.h" />
+    <ClInclude Include="..\zip\iowin32.h" />
+    <ClInclude Include="..\zip\minizip_crypt.h" />
     <ClInclude Include="..\zip\unzip.h" />
     <ClInclude Include="..\zip\zip.h" />
     <ClInclude Include="..\hardware\BleBox.h" />
@@ -666,7 +684,9 @@
     <ClCompile Include="..\hardware\ASyncSerial.cpp" />
     <ClCompile Include="..\hardware\ASyncTCP.cpp" />
     <ClCompile Include="..\hardware\AtagOne.cpp" />
+    <ClCompile Include="..\hardware\ColorSwitch.cpp" />
     <ClCompile Include="..\hardware\Comm5Serial.cpp" />
+    <ClCompile Include="..\hardware\Comm5SMTCP.cpp" />
     <ClCompile Include="..\hardware\Comm5TCP.cpp" />
     <ClCompile Include="..\hardware\csocket.cpp" />
     <ClCompile Include="..\hardware\CurrentCostMeterBase.cpp" />
@@ -676,8 +696,31 @@
     <ClCompile Include="..\hardware\DarkSky.cpp" />
     <ClCompile Include="..\hardware\DavisLoggerSerial.cpp" />
     <ClCompile Include="..\hardware\DenkoviSmartdenLan.cpp" />
+    <ClCompile Include="..\hardware\DenkoviDevices.cpp" />
     <ClCompile Include="..\hardware\Dummy.cpp" />
     <ClCompile Include="..\hardware\Ec3kMeterTCP.cpp" />
+<<<<<<< HEAD
+=======
+    <ClCompile Include="..\hardware\EcoCompteur.cpp" />
+    <ClCompile Include="..\hardware\eHouse\EhouseEvents.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </LanguageStandard>
+    </ClCompile>
+    <ClCompile Include="..\hardware\eHouse\EhouseTcpClient.cpp">
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </LanguageStandard>
+    </ClCompile>
+    <ClCompile Include="..\hardware\eHouse\EhouseUdpListener.cpp">
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </LanguageStandard>
+    </ClCompile>
+    <ClCompile Include="..\hardware\eHouseTCP.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </LanguageStandard>
+    </ClCompile>
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
     <ClCompile Include="..\hardware\EcoDevices.cpp" />
     <ClCompile Include="..\hardware\EnOceanESP2.cpp" />
     <ClCompile Include="..\hardware\EnOceanESP3.cpp" />
@@ -690,6 +733,8 @@
     <ClCompile Include="..\hardware\GoodweAPI.cpp" />
     <ClCompile Include="..\hardware\Gpio.cpp" />
     <ClCompile Include="..\hardware\GpioPin.cpp" />
+    <ClCompile Include="..\hardware\Honeywell.cpp" />
+    <ClCompile Include="..\hardware\NestOAuthAPI.cpp" />
     <ClCompile Include="..\hardware\Rtl433.cpp" />
     <ClCompile Include="..\hardware\SysfsGpio.cpp" />
     <ClCompile Include="..\hardware\HarmonyHub.cpp" />
@@ -734,6 +779,7 @@
     <ClCompile Include="..\hardware\OTGWTCP.cpp" />
     <ClCompile Include="..\hardware\PanasonicTV.cpp" />
     <ClCompile Include="..\hardware\PhilipsHue\PhilipsHue.cpp" />
+    <ClCompile Include="..\hardware\PhilipsHue\PhilipsHueHelper.cpp" />
     <ClCompile Include="..\hardware\PhilipsHue\PhilipsHueSensors.cpp" />
     <ClCompile Include="..\hardware\PiFace.cpp" />
     <ClCompile Include="..\hardware\Pinger.cpp" />
@@ -761,6 +807,7 @@
     <ClCompile Include="..\hardware\SolarEdgeAPI.cpp" />
     <ClCompile Include="..\hardware\SolarMaxTCP.cpp" />
     <ClCompile Include="..\hardware\Sterbox.cpp" />
+    <ClCompile Include="..\hardware\Tado.cpp" />
     <ClCompile Include="..\hardware\TCPProxy\tcpproxy_server.cpp" />
     <ClCompile Include="..\hardware\TE923.cpp" />
     <ClCompile Include="..\hardware\TE923Tool.cpp" />
@@ -892,7 +939,6 @@
     <ClCompile Include="..\notifications\NotificationHTTP.cpp" />
     <ClCompile Include="..\notifications\NotificationKodi.cpp" />
     <ClCompile Include="..\notifications\NotificationLogitechMediaServer.cpp" />
-    <ClCompile Include="..\notifications\NotificationNma.cpp" />
     <ClCompile Include="..\notifications\NotificationProwl.cpp" />
     <ClCompile Include="..\notifications\NotificationPushalot.cpp" />
     <ClCompile Include="..\notifications\NotificationPushbullet.cpp" />
@@ -942,6 +988,18 @@
     <ClCompile Include="..\webserver\request_parser.cpp" />
     <ClCompile Include="..\webserver\server.cpp" />
     <ClCompile Include="..\hardware\BleBox.cpp" />
+    <ClCompile Include="..\zip\unzip.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\zip\iowin32.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\zip\ioapi.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="WindowsHelper.cpp" />
     <ClCompile Include="..\hardware\YouLess.cpp" />
     <ClCompile Include="..\hardware\XiaomiGateway.cpp" />
@@ -1313,7 +1371,6 @@
     <Image Include="..\www\media\trashbody.png" />
     <Image Include="..\www\media\trashlid.png" />
     <Image Include="..\www\media\tree.png" />
-    <Image Include="..\www\secpanel\bg.jpg" />
     <Image Include="..\www\styles\element-dark\images\imgbg.jpg" />
     <Image Include="..\www\styles\element-light\images\imgbg.jpg" />
     <Image Include="..\www\styles\elemental\images\imgbg.jpg" />
@@ -1327,8 +1384,6 @@
     <Font Include="..\www\css\fonts\Oswald-Light.ttf" />
     <Font Include="..\www\css\fonts\Oswald-Regular.ttf" />
     <Font Include="..\www\css\fonts\Satisfy.ttf" />
-    <Font Include="..\www\secpanel\font\Audiowide.ttf" />
-    <Font Include="..\www\secpanel\font\Digital.ttf" />
     <Font Include="..\www\styles\element-dark\fonts\DroidSans.ttf" />
     <Font Include="..\www\styles\element-dark\fonts\OpenSans.ttf" />
     <Font Include="..\www\styles\element-light\fonts\DroidSans.ttf" />
@@ -1339,10 +1394,6 @@
   <ItemGroup>
     <Media Include="..\www\media\click.wav" />
     <Media Include="..\www\media\delete.wav" />
-    <Media Include="..\www\secpanel\media\arm.mp3" />
-    <Media Include="..\www\secpanel\media\disarm.mp3" />
-    <Media Include="..\www\secpanel\media\key.mp3" />
-    <Media Include="..\www\secpanel\media\wrongcode.mp3" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

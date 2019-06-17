@@ -22,6 +22,7 @@
 class CEvohomeSerial : public AsyncSerial, public CEvohomeBase
 {
 public:
+<<<<<<< HEAD
 	CEvohomeSerial(const int ID, const std::string &szSerialPort, const int baudrate, const std::string &UserContID);
 	~CEvohomeSerial(void);
 	bool WriteToHardware(const char *pdata, const unsigned char length);
@@ -173,5 +174,17 @@ private:
 	tmap_relay_check m_RelayCheck;
 
 	bool m_bStartup[2];
+=======
+    CEvohomeSerial(const int ID, const std::string &szSerialPort, const int baudrate, const std::string &UserContID);
+private:
+    bool StopHardware();
+    bool OpenSerialDevice();
+    virtual void Do_Work();
+    virtual void Do_Send(std::string str);
+    void ReadCallback(const char *data, size_t len);
+private:
+    std::string m_szSerialPort;
+    unsigned int m_iBaudRate;
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 };
 

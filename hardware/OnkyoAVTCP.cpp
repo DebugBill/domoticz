@@ -74,7 +74,7 @@ bool OnkyoAVTCP::StopHardware()
 
 void OnkyoAVTCP::OnConnect()
 {
-	_log.Log(LOG_STATUS,"OnkyoAVTCP: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+	_log.Log(LOG_STATUS,"OnkyoAVTCP: connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bDoRestart=false;
 	m_bIsStarted=true;
 
@@ -142,7 +142,7 @@ void OnkyoAVTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "OnkyoAVTCP: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		_log.Log(LOG_ERROR, "OnkyoAVTCP: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||
@@ -199,7 +199,7 @@ bool OnkyoAVTCP::WriteToHardware(const char *pdata, const unsigned char length)
 	bool isctrl = false;
 
 	if (packettype == pTypeGeneralSwitch) {
-		_tGeneralSwitch *xcmd = (_tGeneralSwitch*)pdata;
+		const _tGeneralSwitch *xcmd = reinterpret_cast<const _tGeneralSwitch*>(pdata);
 		int ID = xcmd->id;
 		int level = xcmd->level;
 		char buf[9];
@@ -305,6 +305,7 @@ void OnkyoAVTCP::ReceiveSwitchMsg(const char *pData, int Len, bool muting, int I
 	gswitch.rssi = 12;
 	gswitch.seqnbr = 0;
 
+<<<<<<< HEAD
 	if (result.empty()) {
 		m_mainworker.PushAndWaitRxMessage(this, (const unsigned char *)&gswitch, switch_types[ID].name, 255);
 		m_sql.safe_query("UPDATE DeviceStatus SET SwitchType=%d, CustomImage=%d WHERE(HardwareID == %d) AND (DeviceID == '%08x')", switch_types[ID].switchType, switch_types[ID].customImage, m_HwdID, ID);
@@ -314,6 +315,138 @@ void OnkyoAVTCP::ReceiveSwitchMsg(const char *pData, int Len, bool muting, int I
 				std::string Idx = result[0][0];
 				m_sql.SetDeviceOptions(atoi(Idx.c_str()), m_sql.BuildDeviceOptions(switch_types[ID].options, false));
 			}
+=======
+	sDecodeRXMessage(this, (const unsigned char *)&gswitch, switch_types[ID].name, 255);
+}
+
+void OnkyoAVTCP::EnsureSwitchDevice(int ID, const char *options)
+{
+	std::vector<std::vector<std::string> > result;
+	std::string options_str;
+	result = m_sql.safe_query("SELECT ID FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%08X')", m_HwdID, ID);
+	if (result.size() == 0) {
+		if (!options && switch_types[ID].options) {
+			options_str = m_sql.FormatDeviceOptions(m_sql.BuildDeviceOptions(switch_types[ID].options, false));
+			options = options_str.c_str();
+			_log.Log(LOG_ERROR, "Options from '%s': '%s'\n", switch_types[ID].options, options);
+		}
+		m_sql.safe_query(
+				 "INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue, CustomImage, Options) "
+				 "VALUES (%d, '%08X', %d, %d, %d, %d, %d, 12, 255, '%q', 0, '%q', %d, '%q')",
+				 m_HwdID, ID, 0, pTypeGeneralSwitch, switch_types[ID].subtype, switch_types[ID].switchType, 1, switch_types[ID].name, "", switch_types[ID].customImage, options?options:"");
+
+	}
+}
+
+
+std::string OnkyoAVTCP::BuildSelectorOptions(const std::string & names, const std::string & ids)
+{
+	std::map<std::string, std::string> optionsMap;
+	optionsMap.insert(std::pair<std::string, std::string>("LevelOffHidden", "true"));
+	optionsMap.insert(std::pair<std::string, std::string>("SelectorStyle", "1"));
+	optionsMap.insert(std::pair<std::string, std::string>("LevelNames", names));
+	optionsMap.insert(std::pair<std::string, std::string>("LevelActions", ids));
+	return m_sql.FormatDeviceOptions(optionsMap);
+}
+
+bool OnkyoAVTCP::ReceiveXML(const char *pData, int Len)
+{
+	TiXmlDocument doc;
+
+	((char *)pData)[Len - 1] = 0;
+	pData += 3;
+
+	doc.Parse(pData);
+	if (doc.Error()) {
+		_log.Log(LOG_ERROR, "OnkyoAVTCP: Failed to parse NRIQSTN result: %s", doc.ErrorDesc());
+		// XX: Fallback, add defaults anyway? */
+		return false;
+	}
+	TiXmlElement *pResponseNode = doc.FirstChildElement("response");
+	if (!pResponseNode) {
+		_log.Log(LOG_ERROR, "No <response> element in NRIQSTN result");
+		return false;
+	}
+	TiXmlElement *pDeviceNode = pResponseNode->FirstChildElement("device");
+	if (!pDeviceNode) {
+		_log.Log(LOG_ERROR, "No <device> element in NRIQSTN result");
+		return false;
+	}
+	std::string InputNames[4], InputIDs[4];
+	TiXmlElement *pSelectorlistNode = pDeviceNode->FirstChildElement("selectorlist");
+	if (pSelectorlistNode) {
+		TiXmlElement *pSelector;
+		for ( pSelector = pSelectorlistNode->FirstChildElement(); pSelector;
+		      pSelector = pSelector->NextSiblingElement() ) {
+			const char *id = pSelector->Attribute("id");
+			const char *name = pSelector->Attribute("name");
+			const char *zone = pSelector->Attribute("zone");
+			int value;
+			if (!id || !name || !zone ||
+			    pSelector->QueryIntAttribute("value", &value) != TIXML_SUCCESS ||
+			    !value)
+				continue;
+
+			char *escaped_name = strdup(name);
+			int nlen = strlen(name);
+			while (nlen) {
+				if (escaped_name[nlen - 1] == ' ' && escaped_name[nlen] == 0)
+					escaped_name[nlen - 1] = 0;
+				else if (escaped_name[nlen - 1] == '|')
+					escaped_name[nlen - 1] = '!';
+				nlen--;
+			}
+			if (!escaped_name[0])
+				continue;
+
+			for (int i = 0; i < 3; i++) {
+				int zone_nr = strtoul(zone, NULL, 16);
+				if (zone_nr & (1 << i)) {
+					if (InputNames[i].empty())
+						InputNames[i] = "Off";
+					InputNames[i] += '|';
+					InputNames[i] += escaped_name;
+					if (InputIDs[i].empty())
+						InputIDs[i] = "Off";
+					InputIDs[i] += '|';
+					InputIDs[i] += id;
+				}
+			}
+			free(escaped_name);
+		}
+	}
+	TiXmlElement *pZonelistNode = pDeviceNode->FirstChildElement("zonelist");
+	if (pZonelistNode) {
+		TiXmlElement *pZone;
+		for ( pZone = pZonelistNode->FirstChildElement(); pZone;
+		      pZone = pZone->NextSiblingElement() ) {
+			int id, value, volmax, volstep;
+			const char *name = pZone->Attribute("name");
+
+			if (!name)
+				continue;
+
+			if (pZone->QueryIntAttribute("value", &value) != TIXML_SUCCESS ||
+			    pZone->QueryIntAttribute("id", &id) != TIXML_SUCCESS ||
+			    pZone->QueryIntAttribute("volmax", &volmax) != TIXML_SUCCESS ||
+			    pZone->QueryIntAttribute("volstep", &volstep) != TIXML_SUCCESS)
+				continue;
+
+			if (!value)
+				continue;
+
+			if (id < 1 || id > 4)
+				continue;
+
+			// Create the input selector immediately, with the known options.
+			std::string options = BuildSelectorOptions(InputNames[id - 1], InputIDs[id - 1]);;
+			EnsureSwitchDevice(ID_SLI + id - 1, options.c_str());
+
+			// Send queries for it, and the power and volume for this zone.
+			SendPacket(switch_types[ID_SLI + id - 1].iscpCmd, "QSTN");
+			SendPacket(switch_types[ID_PWR + id - 1].iscpCmd, "QSTN");
+			SendPacket(switch_types[ID_MVL + id - 1].iscpCmd, "QSTN");
+>>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		}
 	} else
 		sDecodeRXMessage(this, (const unsigned char *)&gswitch, switch_types[ID].name, 255);
@@ -388,4 +521,8 @@ void OnkyoAVTCP::ParseData(const unsigned char *pData, int Len)
 	m_pPartialPkt = new_partial;
 }
 
+bool OnkyoAVTCP::CustomCommand(const uint64_t idx, const std::string &sCommand)
+{
+	return SendPacket(sCommand.c_str());
+}
 
