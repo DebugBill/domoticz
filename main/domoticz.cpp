@@ -214,7 +214,10 @@ void daemonize(const char *rundir, const char *pidfile)
 		/* Could not fork */
 		exit(EXIT_FAILURE);
 	}
-
+    
+    /* call srand once for the entire app */
+    std::srand((unsigned int)std::time(nullptr));
+    
 	if (pid > 0)
 	{
 		/* Child created ok, so exit parent process */
@@ -658,9 +661,11 @@ bool ParseConfigFile(const std::string &szConfigFile)
 		}
 		else if (szFlag == "app_path") {
 			szStartupFolder = sLine;
+			FixFolderEnding(szStartupFolder);
 		}
 		else if (szFlag == "userdata_path") {
 			szUserDataFolder = sLine;
+			FixFolderEnding(szUserDataFolder);
 		}
 		else if (szFlag == "daemon_name") {
 			daemonname = sLine;
@@ -694,10 +699,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance,_In_opt_ HINSTANCE hPrevInstance,_In
 int main(int argc, char**argv)
 #endif
 {
-	time_t atime = mytime(NULL);
-	m_LastHeartbeat = atime;
-	std::thread thread_watchdog(Do_Watchdog_Work);
-	SetThreadName(thread_watchdog.native_handle(), "Watchdog");
 #if defined WIN32
 #ifndef _DEBUG
 	CreateMutexA(0, FALSE, "Local\\Domoticz"); 
@@ -762,8 +763,10 @@ int main(int argc, char**argv)
 				return 1;
 			}
 			std::string szroot = cmdLine.GetSafeArgument("-approot", 0, "");
-			if (szroot.size() != 0)
+			if (szroot.size() != 0) {
 				szStartupFolder = szroot;
+				FixFolderEnding(szStartupFolder);
+			}
 		}
 	}
 
@@ -837,7 +840,10 @@ int main(int argc, char**argv)
 			}
 			std::string szroot = cmdLine.GetSafeArgument("-userdata", 0, "");
 			if (szroot.size() != 0)
+			{
 				szUserDataFolder = szroot;
+				FixFolderEnding(szUserDataFolder);
+			}
 		}
 		if (cmdLine.HasSwitch("-startupdelay"))
 		{
@@ -1183,6 +1189,11 @@ int main(int argc, char**argv)
 		signal(SIGTERM, signal_handler);
 #endif
 	}
+
+	// start Watchdog thread after daemonization
+	m_LastHeartbeat = mytime(NULL);
+	std::thread thread_watchdog(Do_Watchdog_Work);
+	SetThreadName(thread_watchdog.native_handle(), "Watchdog");
 
 	if (!m_mainworker.Start())
 	{

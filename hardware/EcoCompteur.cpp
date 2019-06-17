@@ -27,7 +27,6 @@ CEcoCompteur::CEcoCompteur(const int ID, const std::string& url, const unsigned 
 	m_port = port;
 	m_HwdID = ID;
 	m_refresh = 10;	// Refresh time in sec
-	m_stoprequested = false;
 	Init();
 }
 
@@ -46,10 +45,12 @@ bool CEcoCompteur::WriteToHardware(const char* /*pdata*/, const unsigned char /*
 
 bool CEcoCompteur::StartHardware()
 {
+	RequestStart();
+
 	Init();
 	//Start worker thread
 	m_thread = std::make_shared<std::thread>(&CEcoCompteur::Do_Work, this);
-	SetThreadName(m_thread->native_handle(), "EcoCompteur");
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted = true;
 	sOnConnected(this);
 	return (m_thread != nullptr);
@@ -59,7 +60,7 @@ bool CEcoCompteur::StopHardware()
 {
 	if (m_thread)
 	{
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
 		m_thread.reset();
 	}
@@ -72,11 +73,8 @@ void CEcoCompteur::Do_Work()
 	int sec_counter = m_refresh - 5; // Start 5 sec before refresh
 
 	_log.Log(LOG_STATUS, "EcoCompteur: Worker started...");
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
-		if (m_stoprequested)
-			break;
 		sec_counter++;
 		if (sec_counter % 12 == 0) {
 			m_LastHeartbeat = mytime(NULL);
@@ -90,30 +88,32 @@ void CEcoCompteur::Do_Work()
 
 void CEcoCompteur::GetScript()
 {
+	std::string sInst, sLog2;
+
 	// Download instantaneous wattage
-	std::string sInst;
-	std::string sUrl = m_url + "/inst.json";
-	if (!HTTPClient::GET(sUrl, sInst))
+	std::stringstream szURL;
+	szURL << m_url << ":" << m_port << "/inst.json";
+	if (!HTTPClient::GET(szURL.str(), sInst))
 	{
 		_log.Log(LOG_ERROR, "EcoCompteur: Error getting 'inst.json' from url : " + m_url);
 		return;
 	}
 
 	// Download hourly report
-	std::string sLog2;
-	sUrl = m_url + "/log2.csv";
-	if (!HTTPClient::GET(sUrl, sLog2))
+	std::stringstream szLogURL;
+	szLogURL << m_url << ":" << m_port << "/log2.csv";
+	if (!HTTPClient::GET(szLogURL.str(), sLog2))
 	{
 		_log.Log(LOG_ERROR, "EcoCompteur: Error getting 'log2.csv' from url : " + m_url);
 		return;
 	}
 
-	// Parsing inst.json
+	// Parse inst.json
 	Json::Value root;
 	Json::Reader jReader;
 	jReader.parse(sInst, root);
 
-	// Parsing log2.csv
+	// Parse log2.csv
 	if (sLog2.length() == 0)
 	{
 		_log.Log(LOG_ERROR, "EcoCompteur: log2.csv looks empty");

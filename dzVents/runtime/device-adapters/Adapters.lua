@@ -1,4 +1,5 @@
 local genericAdapter = require('generic_device')
+local utils = require('Utils')
 
 local deviceAdapters = {
 	'airquality_device',
@@ -12,6 +13,7 @@ local deviceAdapters = {
 	'electric_usage_device',
 	'evohome_device',
 	'gas_device',
+	'generic_device',
 	'group_device',
 	'humidity_device',
 	'kwh_device',
@@ -49,15 +51,6 @@ local deviceAdapters = {
 	'kodi_device'
 }
 
-local utils = require('Utils')
-
-function string:split(sep)
-	local sep, fields = sep or ":", {}
-	local pattern = string.format("([^%s]+)", sep)
-	self:gsub(pattern, function(c) fields[#fields + 1] = c end)
-	return fields
-end
-
 local function DeviceAdapters(dummyLogger)
 
 	local self = {}
@@ -91,7 +84,7 @@ local function DeviceAdapters(dummyLogger)
 
 	function self.parseFormatted (sValue, radixSeparator)
 
-		local splitted = string.split(sValue, ' ')
+		local splitted = utils.stringSplit(sValue, ' ')
 
 		local sV = splitted[1]
 		local unit = splitted[2]
@@ -133,15 +126,6 @@ local function DeviceAdapters(dummyLogger)
 		end
 	end
 
-	function self.round(num, numDecimalPlaces)
-		if (num == nil) then
-			--print(debug.traceback())
-			num = 0
-		end
-		local mult = 10 ^ (numDecimalPlaces or 0)
-		return math.floor(num * mult + 0.5) / mult
-	end
-
 	self.states = {
 		on = { b = true, inv = 'Off' },
 		open = { b = true, inv = 'Off' },
@@ -170,6 +154,7 @@ local function DeviceAdapters(dummyLogger)
 		['nightmode'] = { b = true, inv = 'Off' },
 		['set to white'] = { b = true, inv = 'Off' },
 		['set kelvin level'] = { b = true, inv = 'Off' },
+		['set color'] = { b = true },
 	}
 
 	return self

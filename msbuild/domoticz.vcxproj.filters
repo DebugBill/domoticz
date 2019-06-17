@@ -423,9 +423,6 @@
     <Filter Include="Devices\YeeLight">
       <UniqueIdentifier>{40997df4-ca83-46d7-ae42-d23049f98a0b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Devices\Python Plugins">
-      <UniqueIdentifier>{71bf66bf-20b6-4786-b8ff-f394e16d2d84}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Devices\Xiaomi Gateway">
       <UniqueIdentifier>{5f68f493-7523-43aa-95db-f23ecc307771}</UniqueIdentifier>
     </Filter>
@@ -455,12 +452,6 @@
     </Filter>
     <Filter Include="Devices\Teleinfo">
       <UniqueIdentifier>{b6226872-73d2-4b12-8eba-80be3ad6835f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Devices\Teleinfo\TeleinfoBase">
-      <UniqueIdentifier>{9b098c6e-b49d-aaaa-b9a2-5904c1d92edd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Devices\Teleinfo\TeleinfoSerial">
-      <UniqueIdentifier>{9b098c6e-b49d-404b-b9a2-5904c1d92edd}</UniqueIdentifier>
     </Filter>
     <Filter Include="IFTTT">
       <UniqueIdentifier>{779670e0-dcb8-4783-8864-1ef443ac8bad}</UniqueIdentifier>
@@ -503,6 +494,21 @@
     </Filter>
     <Filter Include="Logger">
       <UniqueIdentifier>{00a6f809-e840-406e-bb5e-4796d71ed4a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EventSystem\dzVents">
+      <UniqueIdentifier>{763ab753-e642-4d98-8736-0c49a11d637b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EventSystem\Lua">
+      <UniqueIdentifier>{330b5cf1-0528-4eaf-96b7-406823b99afe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EventSystem\Python">
+      <UniqueIdentifier>{5963621f-6d1b-49cd-9e55-f76a0f0d287d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="www\app\hardware">
+      <UniqueIdentifier>{35489dbf-0ffd-4619-95f6-31966e23f1d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="www\app\hardware\setup">
+      <UniqueIdentifier>{a48a127e-d23d-445b-a0d7-8105024adac4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -1337,6 +1343,75 @@
     <None Include="..\www\secpanel\css\style.css">
       <Filter>www\secpanel\css</Filter>
     </None>
+    <None Include="..\www\app\DeviceLightEdit.js">
+      <Filter>www\app</Filter>
+    </None>
+    <None Include="..\www\app\DummyController.js">
+      <Filter>www\app</Filter>
+    </None>
+    <None Include="..\www\app\TemperatureCustomLogController.js">
+      <Filter>www\app</Filter>
+    </None>
+    <None Include="..\www\app\TimerplanController.js">
+      <Filter>www\app</Filter>
+    </None>
+    <None Include="..\webserver\proxydef.def">
+      <Filter>Webserver</Filter>
+    </None>
+    <None Include="..\www\app\hardware\Hardware.html">
+      <Filter>www\app\hardware</Filter>
+    </None>
+    <None Include="..\www\app\hardware\Hardware.js">
+      <Filter>www\app\hardware</Filter>
+    </None>
+    <None Include="..\www\app\hardware\HardwareSetup.html">
+      <Filter>www\app\hardware</Filter>
+    </None>
+    <None Include="..\www\app\hardware\HardwareSetup.js">
+      <Filter>www\app\hardware</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\BleBox.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\BleBox.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\Kodi.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\Kodi.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\MySensors.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\MySensors.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\PanasonicTV.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\PanasonicTV.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\Pinger.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\Pinger.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\WakeOnLan.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\WakeOnLan.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\ZWave.html">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
+    <None Include="..\www\app\hardware\setup\ZWave.js">
+      <Filter>www\app\hardware\setup</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\webserver\Base64.h">
@@ -1500,12 +1575,6 @@
     </ClInclude>
     <ClInclude Include="..\hardware\OTGWTCP.h">
       <Filter>Devices\OpenTherm-Gateway</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\TeleinfoSerial.h">
-      <Filter>Devices\Teleinfo\TeleinfoSerial</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\TeleinfoBase.h">
-      <Filter>Devices\Teleinfo\TeleinfoBase</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\ZWaveBase.h">
       <Filter>Devices\ZWave</Filter>
@@ -1807,11 +1876,11 @@
     <ClInclude Include="..\webserver\proxyclient.h">
       <Filter>Webserver</Filter>
     </ClInclude>
-    <ClInclude Include="..\webserver\proxycommon.h">
-      <Filter>Webserver</Filter>
-    </ClInclude>
     <ClInclude Include="..\hardware\SatelIntegra.h">
       <Filter>Devices\SatelIntegra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\TelldusFunctions.h">
+      <Filter>Devices\Tellstick</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\Tellstick.h">
       <Filter>Devices\Tellstick</Filter>
@@ -1945,24 +2014,6 @@
     <ClInclude Include="..\hardware\MySensorsMQTT.h">
       <Filter>Devices\MySensors</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\plugins\PluginManager.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\plugins\DelayedLink.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\plugins\Plugins.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\plugins\PluginMessages.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\plugins\PluginProtocols.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\hardware\plugins\PluginTransports.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
     <ClInclude Include="..\hardware\XiaomiGateway.h">
       <Filter>Devices\Xiaomi Gateway</Filter>
     </ClInclude>
@@ -1996,20 +2047,11 @@
     <ClInclude Include="..\hardware\RelayNet.h">
       <Filter>Devices\RelayNet</Filter>
     </ClInclude>
-    <ClInclude Include="..\hardware\plugins\PythonObjects.h">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClInclude>
     <ClInclude Include="..\hardware\SysfsGPIO.h">
       <Filter>Devices\SysfsGPIO</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\Rtl433.h">
       <Filter>Devices\RTL_433</Filter>
-    </ClInclude>
-    <ClInclude Include="..\main\EventsPythonDevice.h">
-      <Filter>EventSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\main\EventsPythonModule.h">
-      <Filter>EventSystem</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\OnkyoAVTCP.h">
       <Filter>Devices\OnkyoAVTCP</Filter>
@@ -2058,15 +2100,6 @@
     </ClInclude>
     <ClInclude Include="..\hardware\Honeywell.h">
       <Filter>Devices\Honeywell</Filter>
-    </ClInclude>
-    <ClInclude Include="..\main\dzVents.h">
-      <Filter>EventSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\main\LuaCommon.h">
-      <Filter>EventSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\main\LuaHandler.h">
-      <Filter>EventSystem</Filter>
     </ClInclude>
     <ClInclude Include="..\hardware\EvohomeScript.h">
       <Filter>Devices\EvoHome</Filter>
@@ -2133,6 +2166,60 @@
     </ClInclude>
     <ClInclude Include="..\main\Logger.h">
       <Filter>Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\StoppableTask.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\TeleinfoSerial.h">
+      <Filter>Devices\Teleinfo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\TeleinfoBase.h">
+      <Filter>Devices\Teleinfo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\TrendCalculator.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\webserver\proxycereal.hpp">
+      <Filter>Webserver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\HardwareCereal.h">
+      <Filter>Devices</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\dzVents.h">
+      <Filter>EventSystem\dzVents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\LuaCommon.h">
+      <Filter>EventSystem\Lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\LuaHandler.h">
+      <Filter>EventSystem\Lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\EventsPythonDevice.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\main\EventsPythonModule.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\DelayedLink.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\PluginManager.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\PluginMessages.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\PluginProtocols.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\Plugins.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\PluginTransports.h">
+      <Filter>EventSystem\Python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\plugins\PythonObjects.h">
+      <Filter>EventSystem\Python</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2276,12 +2363,6 @@
     </ClCompile>
     <ClCompile Include="..\hardware\OTGWTCP.cpp">
       <Filter>Devices\OpenTherm-Gateway</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\TeleinfoBase.cpp">
-      <Filter>Devices\Teleinfo\TeleinfoBase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\TeleinfoSerial.cpp">
-      <Filter>Devices\Teleinfo\TeleinfoSerial</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\ZWaveBase.cpp">
       <Filter>Devices\ZWave</Filter>
@@ -2550,13 +2631,13 @@
     <ClCompile Include="..\webserver\proxyclient.cpp">
       <Filter>Webserver</Filter>
     </ClCompile>
-    <ClCompile Include="..\webserver\proxycommon.cpp">
-      <Filter>Webserver</Filter>
-    </ClCompile>
     <ClCompile Include="..\hardware\SatelIntegra.cpp">
       <Filter>Devices\SatelIntegra</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\Tellstick.cpp">
+      <Filter>Devices\Tellstick</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\TellstickFactory.cpp">
       <Filter>Devices\Tellstick</Filter>
     </ClCompile>
     <ClCompile Include="..\notifications\NotificationPushbullet.cpp">
@@ -2733,21 +2814,6 @@
     <ClCompile Include="..\hardware\MySensorsMQTT.cpp">
       <Filter>Devices\MySensors</Filter>
     </ClCompile>
-    <ClCompile Include="..\hardware\plugins\PluginManager.cpp">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\plugins\PluginProtocols.cpp">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\plugins\DelayedLink.cpp">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\plugins\Plugins.cpp">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hardware\plugins\PluginTransports.cpp">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClCompile>
     <ClCompile Include="..\hardware\XiaomiGateway.cpp">
       <Filter>Devices\Xiaomi Gateway</Filter>
     </ClCompile>
@@ -2781,20 +2847,11 @@
     <ClCompile Include="..\hardware\RelayNet.cpp">
       <Filter>Devices\RelayNet</Filter>
     </ClCompile>
-    <ClCompile Include="..\hardware\plugins\PythonObjects.cpp">
-      <Filter>Devices\Python Plugins</Filter>
-    </ClCompile>
     <ClCompile Include="..\hardware\SysfsGPIO.cpp">
       <Filter>Devices\SysfsGPIO</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\Rtl433.cpp">
       <Filter>Devices\RTL_433</Filter>
-    </ClCompile>
-    <ClCompile Include="..\main\EventsPythonDevice.cpp">
-      <Filter>EventSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\main\EventsPythonModule.cpp">
-      <Filter>EventSystem</Filter>
     </ClCompile>
     <ClCompile Include="..\hardware\OnkyoAVTCP.cpp">
       <Filter>Devices\OnkyoAVTCP</Filter>
@@ -2847,15 +2904,6 @@
     <ClCompile Include="..\hardware\Tado.cpp">
       <Filter>Devices\Tado</Filter>
     </ClCompile>
-    <ClCompile Include="..\main\dzVents.cpp">
-      <Filter>EventSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\main\LuaCommon.cpp">
-      <Filter>EventSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\main\LuaHandler.cpp">
-      <Filter>EventSystem</Filter>
-    </ClCompile>
     <ClCompile Include="..\hardware\EvohomeScript.cpp">
       <Filter>Devices\EvoHome</Filter>
     </ClCompile>
@@ -2906,6 +2954,51 @@
     </ClCompile>
     <ClCompile Include="..\main\Logger.cpp">
       <Filter>Logger</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\TeleinfoSerial.cpp">
+      <Filter>Devices\Teleinfo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\TeleinfoBase.cpp">
+      <Filter>Devices\Teleinfo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\TrendCalculator.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\webserver\proxycereal.cpp">
+      <Filter>Webserver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\dzVents.cpp">
+      <Filter>EventSystem\dzVents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\LuaCommon.cpp">
+      <Filter>EventSystem\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\LuaHandler.cpp">
+      <Filter>EventSystem\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\EventsPythonDevice.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main\EventsPythonModule.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\DelayedLink.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\PluginManager.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\PluginProtocols.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\Plugins.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\PluginTransports.cpp">
+      <Filter>EventSystem\Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\plugins\PythonObjects.cpp">
+      <Filter>EventSystem\Python</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

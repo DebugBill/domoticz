@@ -2,12 +2,12 @@
 #include "BleBox.h"
 #include "hardwaretypes.h"
 #include "../json/json.h"
+#include "../main/Helper.h"
+#include "../main/localtime_r.h"
 #include "../main/Logger.h"
 #include "../main/mainworker.h"
-#include "../main/localtime_r.h"
-#include "../main/Helper.h"
-#include "../main/WebServer.h"
 #include "../main/SQLHelper.h"
+#include "../main/WebServer.h"
 #include "../httpclient/HTTPClient.h"
 
 struct STR_DEVICE {
@@ -20,7 +20,7 @@ struct STR_DEVICE {
 	std::string api_state;
 };
 
-#define TOT_DEVICE_TYPES 7
+#define TOT_DEVICE_TYPES 9
 
 const STR_DEVICE DevicesType[TOT_DEVICE_TYPES] =
 {
@@ -30,11 +30,12 @@ const STR_DEVICE DevicesType[TOT_DEVICE_TYPES] =
 	{ 3, "wLightBox", "Light Box", pTypeColorSwitch, sTypeColor_RGB_W, STYPE_Dimmer, "rgbw" },
 	{ 4, "gateBox", "Gate Box", pTypeGeneral, sTypePercentage, 0, "gate" },
 	{ 5, "dimmerBox", "Dimmer Box", pTypeLighting2, sTypeAC, STYPE_Dimmer, "dimmer" },
-	{ 6, "switchBoxD", "Switch Box D", pTypeLighting2, sTypeAC, STYPE_OnOff, "relay" }
+	{ 6, "switchBoxD", "Switch Box D", pTypeLighting2, sTypeAC, STYPE_OnOff, "relay" },
+	{ 7, "airSensor", "Air Sensor", pTypeAirQuality, sTypeVoltcraft, 0, "air" },
+	{ 8, "tempSensor", "Temp Sensor", pTypeGeneral, sTypeTemperature, 0, "tempsensor" },
 };
 
-BleBox::BleBox(const int id, const int pollIntervalsec) :
-	m_stoprequested(false)
+BleBox::BleBox(const int id, const int pollIntervalsec)
 {
 	m_HwdID = id;
 	m_RGBWisWhiteState = true;
@@ -48,11 +49,12 @@ BleBox::~BleBox()
 
 bool BleBox::StartHardware()
 {
-	m_stoprequested = false;
+	RequestStart();
 
 	LoadNodes();
+
 	m_thread = std::make_shared<std::thread>(&BleBox::Do_Work, this);
-	SetThreadName(m_thread->native_handle(), "BleBox");
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted = true;
 	sOnConnected(this);
 	return (m_thread != nullptr);
@@ -60,10 +62,9 @@ bool BleBox::StartHardware()
 
 bool BleBox::StopHardware()
 {
-	m_stoprequested = true;
-
 	if (m_thread)
 	{
+		RequestStop();
 		m_thread->join();
 		m_thread.reset();
 	}
@@ -76,11 +77,9 @@ void BleBox::Do_Work()
 {
 	int sec_counter = m_PollInterval - 1;
 
-	while (!m_stoprequested)
+	Log(LOG_STATUS, "Worker started...");
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
-		if (m_stoprequested)
-			break;
 		sec_counter++;
 
 		if (sec_counter % 12 == 0) {
@@ -92,13 +91,14 @@ void BleBox::Do_Work()
 			GetDevicesState();
 		}
 	}
+	Log(LOG_STATUS, "Worker stopped...");
 }
 
 void BleBox::GetDevicesState()
 {
 	std::lock_guard<std::mutex> l(m_mutex);
 
-	for (const auto & itt : m_devices)
+	for (const auto& itt : m_devices)
 	{
 		std::stringstream sstr;
 		sstr << "/api/" << DevicesType[itt.second].api_state << "/state";
@@ -125,6 +125,11 @@ void BleBox::GetDevicesState()
 			}
 			case 1:
 			{
+				if (DoesNodeExists(root, "shutter") == false)
+					break;
+
+				root = root["shutter"];
+
 				if (DoesNodeExists(root, "state") == false)
 					break;
 
@@ -140,7 +145,7 @@ void BleBox::GetDevicesState()
 				if ((state == 2 && pos == 100) || (state == 3))
 					opened = false;
 
-				SendSwitch(IP, 0, 255, opened, pos, DevicesType[itt.second].name);
+				SendSwitch(IP, 0, 255, opened, 100 - pos, DevicesType[itt.second].name);
 				break;
 			}
 			case 2:
@@ -209,13 +214,73 @@ void BleBox::GetDevicesState()
 
 				break;
 			}
+			case 7:
+			{
+				if (DoesNodeExists(root, "air") == false)
+					break;
+
+				root = root["air"];
+
+				if ((DoesNodeExists(root, "sensors") == false) || (!root["sensors"].isArray()))
+					break;
+
+				Json::Value sensors = root["sensors"];
+				Json::ArrayIndex count = sensors.size();
+				for (Json::ArrayIndex index = 0; index < count; index++)
+				{
+					Json::Value sensor = sensors[index];
+					if ((DoesNodeExists(sensor, "type") == false) || (DoesNodeExists(sensor, "value") == false))
+						break;
+					uint8_t value = (uint8_t)sensor["value"].asInt();
+					std::string type = sensor["type"].asString();
+
+					//TODO - how save IP address ??
+					SendAirQualitySensor(IP, index + 1, 255, value, type);
+				}
+
+				break;
+			}
+			case 8:
+			{
+				if (DoesNodeExists(root, "tempSensor") == false)
+					break;
+
+				root = root["tempSensor"];
+
+				if ((DoesNodeExists(root, "sensors") == false) || (!root["sensors"].isArray()))
+					break;
+
+				Json::Value sensors = root["sensors"];
+				Json::ArrayIndex count = sensors.size();
+				for (Json::ArrayIndex index = 0; index < count; index++)
+				{
+					Json::Value sensor = sensors[index];
+
+					if ((DoesNodeExists(sensor, "value") == false) || (DoesNodeExists(sensor, "state") == false))
+						break;
+
+					if (sensor["state"] != 2)
+					{
+						Log(LOG_ERROR, "temp sensor error!");
+						break;
+					}
+
+					std::string temperature = sensor["value"].asString(); // xxxx (xx.xx = temperature)
+					float ftemp = static_cast<float>(std::stoi(temperature.substr(0, 2)) + std::stoi(temperature.substr(2, 2)) / 100.0);
+
+					//TODO - how save IP address ??
+					SendTempSensor(IP, 255, ftemp, DevicesType[itt.second].name);
+				}
+
+				break;
+			}
 			}
 			SetHeartbeatReceived();
 		}
 	}
 }
 
-std::string BleBox::GetDeviceIP(const tRBUF *id)
+std::string BleBox::GetDeviceIP(const tRBUF * id)
 {
 	char ip[20];
 
@@ -223,7 +288,7 @@ std::string BleBox::GetDeviceIP(const tRBUF *id)
 	return ip;
 }
 
-std::string BleBox::GetDeviceRevertIP(const tRBUF *id)
+std::string BleBox::GetDeviceRevertIP(const tRBUF * id)
 {
 	char ip[20];
 
@@ -231,7 +296,7 @@ std::string BleBox::GetDeviceRevertIP(const tRBUF *id)
 	return ip;
 }
 
-std::string BleBox::GetDeviceIP(const std::string &id)
+std::string BleBox::GetDeviceIP(const std::string & id)
 {
 	BYTE id1, id2, id3, id4;
 	char ip[20];
@@ -242,7 +307,7 @@ std::string BleBox::GetDeviceIP(const std::string &id)
 	return ip;
 }
 
-int BleBox::GetDeviceTypeByApiName(const std::string &apiName)
+int BleBox::GetDeviceTypeByApiName(const std::string & apiName)
 {
 	for (unsigned int i = 0; i < TOT_DEVICE_TYPES; ++i)
 	{
@@ -251,11 +316,11 @@ int BleBox::GetDeviceTypeByApiName(const std::string &apiName)
 			return DevicesType[i].unit;
 		}
 	}
-	_log.Log(LOG_ERROR, "BleBox: unknown device api name(%s)", apiName.c_str());
+	Log(LOG_ERROR, "unknown device api name(%s)", apiName.c_str());
 	return -1;
 }
 
-std::string BleBox::IPToHex(const std::string &IPAddress, const int type)
+std::string BleBox::IPToHex(const std::string & IPAddress, const int type)
 {
 	std::vector<std::string> strarray;
 	StringSplit(IPAddress, ".", strarray);
@@ -276,9 +341,9 @@ std::string BleBox::IPToHex(const std::string &IPAddress, const int type)
 	return szIdx;
 }
 
-bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
+bool BleBox::WriteToHardware(const char* pdata, const unsigned char /*length*/)
 {
-	const tRBUF *output = reinterpret_cast<const tRBUF*>(pdata);
+	const tRBUF* output = reinterpret_cast<const tRBUF*>(pdata);
 
 	if (output->ICMND.packettype == pTypeLighting2 && output->LIGHTING2.subtype == sTypeAC)
 	{
@@ -311,7 +376,7 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 
 				if (root["state"].asString() != state)
 				{
-					_log.Log(LOG_ERROR, "BleBox: state not changed!");
+					Log(LOG_ERROR, "state not changed!");
 					return false;
 				}
 				break;
@@ -328,25 +393,26 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 					percentage = 100;
 					break;
 				default:
-					percentage = output->LIGHTING2.level * 100 / 15;
+					percentage = 100 - output->LIGHTING2.level * 100 / 15;
 					break;
 				}
-
 
 				Json::Value root = SendCommand(IPAddress, "/s/p/" + std::to_string(percentage));
 
 				if (root.empty())
 					return false;
 
-				if (DoesNodeExists(root, "state") == false)
+				if (DoesNodeExists(root, "shutter") == false)
 					return false;
 
-				// TODO - add check
-				//if (root["state"].asString() != state)
-				//{
-				//	_log.Log(LOG_ERROR, "BleBox: state not changed!");
-				//	return false;
-				//}
+				root = root["shutter"];
+
+				if (DoesNodeExists(root, "desiredPos", "position") == false)
+					return false;
+
+				if (root["desiredPos"]["position"].asInt() != percentage)
+					return false;
+
 				break;
 			}
 
@@ -380,7 +446,7 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 
 				if (root["light"]["desiredColor"].asString() != level)
 				{
-					_log.Log(LOG_ERROR, "BleBox: light not changed!");
+					Log(LOG_ERROR, "light not changed!");
 					return false;
 				}
 
@@ -421,7 +487,7 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 
 				if (state != level)
 				{
-					_log.Log(LOG_ERROR, "BleBox: dimmer not changed!");
+					Log(LOG_ERROR, "dimmer not changed!");
 					return false;
 				}
 
@@ -530,7 +596,7 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 	{
 		std::string IPAddress = GetDeviceRevertIP(output);
 
-		const _tColorSwitch *pLed = reinterpret_cast<const _tColorSwitch *>(pdata);
+		const _tColorSwitch* pLed = reinterpret_cast<const _tColorSwitch*>(pdata);
 		int red, green, blue, white;
 		bool setColor = true;
 
@@ -539,9 +605,9 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 		case Color_LedOn: {
 			if (m_RGBWColorState.mode != ColorModeNone && !m_RGBWisWhiteState)
 			{
-				red = int(round(m_RGBWColorState.r*m_RGBWbrightnessState / 255.0f));
-				green = int(round(m_RGBWColorState.g*m_RGBWbrightnessState / 255.0f));
-				blue = int(round(m_RGBWColorState.b*m_RGBWbrightnessState / 255.0f));
+				red = int(round(m_RGBWColorState.r * m_RGBWbrightnessState / 255.0f));
+				green = int(round(m_RGBWColorState.g * m_RGBWbrightnessState / 255.0f));
+				blue = int(round(m_RGBWColorState.b * m_RGBWbrightnessState / 255.0f));
 				white = 0;
 			}
 			else
@@ -577,13 +643,13 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 				m_RGBWColorState = pLed->color;
 			}
 			else {
-				_log.Log(LOG_STATUS, "Blebox: SetRGBColour - Color mode %d is unhandled, if you have a suggestion for what it should do, please post on the Domoticz forum", pLed->color.mode);
+				Log(LOG_STATUS, "SetRGBColour - Color mode %d is unhandled, if you have a suggestion for what it should do, please post on the Domoticz forum", pLed->color.mode);
 			}
 			// No break, fall through to send combined color + brightness command
 		}
 		case Color_SetBrightnessLevel: {
 			int BrightnessBase = (int)pLed->value;
-			int dMax_Send = (int)(round((255.0f / 100.0f)*float(BrightnessBase)));
+			int dMax_Send = (int)(round((255.0f / 100.0f) * float(BrightnessBase)));
 
 			m_RGBWbrightnessState = dMax_Send;
 
@@ -596,9 +662,9 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 			}
 			else
 			{
-				red = int(round(m_RGBWColorState.r*dMax_Send / 255.0f));
-				green = int(round(m_RGBWColorState.g*dMax_Send / 255.0f));
-				blue = int(round(m_RGBWColorState.b*dMax_Send / 255.0f));
+				red = int(round(m_RGBWColorState.r * dMax_Send / 255.0f));
+				green = int(round(m_RGBWColorState.g * dMax_Send / 255.0f));
+				blue = int(round(m_RGBWColorState.b * dMax_Send / 255.0f));
 				white = 0;
 			}
 			break;
@@ -624,7 +690,7 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 
 		if (root["rgbw"]["desiredColor"].asString() != state)
 		{
-			_log.Log(LOG_ERROR, "BleBox: rgbw not changed!");
+			Log(LOG_ERROR, "rgbw not changed!");
 			return false;
 		}
 		return true;
@@ -633,24 +699,24 @@ bool BleBox::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 	return false;
 }
 
-bool BleBox::DoesNodeExists(const Json::Value &root, const std::string &node)
+bool BleBox::DoesNodeExists(const Json::Value & root, const std::string & node)
 {
 	if (root[node].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "BleBox: node '%s' missing!", node.c_str());
+		Log(LOG_ERROR, "node '%s' missing!", node.c_str());
 		return false;
 	}
 	return true;
 }
 
-bool BleBox::DoesNodeExists(const Json::Value &root, const std::string &node, const std::string &value)
+bool BleBox::DoesNodeExists(const Json::Value & root, const std::string & node, const std::string & value)
 {
 	if (DoesNodeExists(root, node) == false)
 		return false;
 
 	if (root[node][value].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "BleBox: value '%s' missing!", value.c_str());
+		Log(LOG_ERROR, "value '%s' missing!", value.c_str());
 		return false;
 	}
 	return true;
@@ -664,15 +730,9 @@ void BleBox::SetSettings(const int pollIntervalSec)
 		m_PollInterval = pollIntervalSec;
 }
 
-void BleBox::Restart()
-{
-	StopHardware();
-	StartHardware();
-}
-
-void BleBox::SendSwitch(const int NodeID, const uint8_t ChildID, const int BatteryLevel, const bool bOn, const double Level, const std::string &defaultname)
+void BleBox::SendSwitch(const int NodeID, const uint8_t ChildID, const int BatteryLevel, const bool bOn, const double Level, const std::string & defaultname)
 { //TODO - remove this method, when in DomoticzHardware bug is fix (15 instead 16)
-	double rlevel = (15.0 / 100.0)*Level;
+	double rlevel = (15.0 / 100.0) * Level;
 	uint8_t level = (uint8_t)(rlevel);
 
 	//make device ID
@@ -726,14 +786,14 @@ void BleBox::SendSwitch(const int NodeID, const uint8_t ChildID, const int Batte
 	lcmd.LIGHTING2.level = level;
 	lcmd.LIGHTING2.filler = 0;
 	lcmd.LIGHTING2.rssi = 12;
-	sDecodeRXMessage(this, (const unsigned char *)&lcmd.LIGHTING2, defaultname.c_str(), BatteryLevel);
+	sDecodeRXMessage(this, (const unsigned char*)& lcmd.LIGHTING2, defaultname.c_str(), BatteryLevel);
 }
 
 
 //Webserver helpers
 namespace http {
 	namespace server {
-		void CWebServer::Cmd_BleBoxGetNodes(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxGetNodes(WebEmSession& session, const request& req, Json::Value& root)
 		{
 			if (session.rights != 2)
 			{
@@ -742,7 +802,7 @@ namespace http {
 			}
 
 			std::string hwid = request::findValue(&req, "idx");
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase* pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
 
@@ -754,7 +814,7 @@ namespace http {
 			if (!result.empty())
 			{
 				int ii = 0;
-				for (const auto & itt : result)
+				for (const auto& itt : result)
 				{
 					std::vector<std::string> sd = itt;
 
@@ -771,7 +831,7 @@ namespace http {
 					root["result"][ii]["hv"] = "unknown";
 					root["result"][ii]["fv"] = "unknown";
 
-					BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+					BleBox* pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 					int type = pHardware->GetDeviceType(ip);
 					if (type != -1)
@@ -797,7 +857,7 @@ namespace http {
 			}
 		}
 
-		void CWebServer::Cmd_BleBoxSetMode(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxSetMode(WebEmSession& session, const request& req, Json::Value& root)
 		{
 			if (session.rights != 2)
 			{
@@ -814,10 +874,10 @@ namespace http {
 				(mode2 == "")
 				)
 				return;
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase * pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
-			BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+			BleBox * pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 			root["status"] = "OK";
 			root["title"] = "BleBoxSetMode";
@@ -831,7 +891,7 @@ namespace http {
 		}
 
 
-		void CWebServer::Cmd_BleBoxAddNode(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxAddNode(WebEmSession & session, const request & req, Json::Value & root)
 		{
 			if (session.rights != 2)
 			{
@@ -848,17 +908,17 @@ namespace http {
 				(ip == "")
 				)
 				return;
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase * pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
-			BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+			BleBox * pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 			root["status"] = "OK";
 			root["title"] = "BleBoxAddNode";
-			pHardware->AddNode(name, ip);
+			pHardware->AddNode(name, ip, true);
 		}
 
-		void CWebServer::Cmd_BleBoxRemoveNode(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxRemoveNode(WebEmSession & session, const request & req, Json::Value & root)
 		{
 			if (session.rights != 2)
 			{
@@ -873,10 +933,10 @@ namespace http {
 				(nodeid == "")
 				)
 				return;
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase * pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
-			BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+			BleBox * pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 			root["status"] = "OK";
 			root["title"] = "BleBoxRemoveNode";
@@ -884,7 +944,7 @@ namespace http {
 			pHardware->RemoveNode(ID);
 		}
 
-		void CWebServer::Cmd_BleBoxClearNodes(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxClearNodes(WebEmSession & session, const request & req, Json::Value & root)
 		{
 			if (session.rights != 2)
 			{
@@ -893,17 +953,17 @@ namespace http {
 			}
 
 			std::string hwid = request::findValue(&req, "idx");
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase* pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
-			BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+			BleBox * pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 			root["status"] = "OK";
 			root["title"] = "BleBoxClearNodes";
 			pHardware->RemoveAllNodes();
 		}
 
-		void CWebServer::Cmd_BleBoxAutoSearchingNodes(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxAutoSearchingNodes(WebEmSession & session, const request & req, Json::Value & root)
 		{
 			if (session.rights != 2)
 			{
@@ -918,17 +978,17 @@ namespace http {
 				(ipmask == "")
 				)
 				return;
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase * pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
-			BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+			BleBox * pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 			root["status"] = "OK";
 			root["title"] = "BleBoxAutoSearchingNodes";
 			pHardware->SearchNodes(ipmask);
 		}
 
-		void CWebServer::Cmd_BleBoxUpdateFirmware(WebEmSession & session, const request& req, Json::Value &root)
+		void CWebServer::Cmd_BleBoxUpdateFirmware(WebEmSession & session, const request & req, Json::Value & root)
 		{
 			if (session.rights != 2)
 			{
@@ -937,10 +997,10 @@ namespace http {
 			}
 
 			std::string hwid = request::findValue(&req, "idx");
-			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
+			CDomoticzHardwareBase* pBaseHardware = m_mainworker.GetHardwareByIDType(hwid, HTYPE_BleBox);
 			if (pBaseHardware == NULL)
 				return;
-			BleBox *pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
+			BleBox * pHardware = reinterpret_cast<BleBox*>(pBaseHardware);
 
 			root["status"] = "OK";
 			root["title"] = "BleBoxUpdateFirmware";
@@ -950,7 +1010,7 @@ namespace http {
 	}
 }
 
-Json::Value BleBox::SendCommand(const std::string &IPAddress, const std::string &command, const int timeOut)
+Json::Value BleBox::SendCommand(const std::string & IPAddress, const std::string & command, const int timeOut)
 {
 	std::string result;
 	Json::Value root;
@@ -963,20 +1023,20 @@ Json::Value BleBox::SendCommand(const std::string &IPAddress, const std::string 
 	HTTPClient::SetTimeout(4);
 	if (!HTTPClient::GET(sURL, result))
 	{
-		_log.Log(LOG_ERROR, "BleBox: send '%s'command to %s failed!", command.c_str(), IPAddress.c_str());
+		Log(LOG_ERROR, "send '%s'command to %s failed!", command.c_str(), IPAddress.c_str());
 		return root;
 	}
 
 	Json::Reader jReader;
 	if (!jReader.parse(result, root))
 	{
-		_log.Log(LOG_ERROR, "BleBox: Invalid json received!");
+		Log(LOG_ERROR, "Invalid json received!");
 		return root;
 	}
 
 	if (root.size() == 0)
 	{
-		_log.Log(LOG_ERROR, "BleBox: Json is empty!");
+		Log(LOG_ERROR, "Json is empty!");
 		return root;
 	}
 
@@ -986,7 +1046,7 @@ Json::Value BleBox::SendCommand(const std::string &IPAddress, const std::string 
 	return root;
 }
 
-std::string BleBox::IdentifyDevice(const std::string &IPAddress)
+std::string BleBox::IdentifyDevice(const std::string & IPAddress)
 {
 	Json::Value root = SendCommand(IPAddress, "/api/device/state", 2);
 	if (!root.isObject())
@@ -1005,7 +1065,7 @@ std::string BleBox::IdentifyDevice(const std::string &IPAddress)
 	{
 		if (root["device"]["type"].empty() == true)
 		{
-			_log.Log(LOG_ERROR, "BleBox: Invalid device type received!");
+			Log(LOG_ERROR, "Invalid device type received!");
 			return "";
 		}
 		result = root["device"]["type"].asString();
@@ -1013,7 +1073,7 @@ std::string BleBox::IdentifyDevice(const std::string &IPAddress)
 	return result;
 }
 
-Json::Value BleBox::GetApiDeviceState(const std::string &IPAddress)
+Json::Value BleBox::GetApiDeviceState(const std::string & IPAddress)
 {
 	Json::Value empty;
 
@@ -1031,34 +1091,54 @@ Json::Value BleBox::GetApiDeviceState(const std::string &IPAddress)
 	}
 }
 
-std::string BleBox::GetUptime(const std::string &IPAddress)
+std::string BleBox::GetUptime(const std::string & IPAddress)
 {
 	Json::Value root = SendCommand(IPAddress, "/api/device/uptime", 2);
 	if (root.empty())
+	{
+		root = SendCommand(IPAddress, "/api/device/runtime", 2);
+		if (root.empty())
+			return "unknown";
+		if (DoesNodeExists(root, "runtime") == false)
+			return "unknown";
+		root = root["runtime"];
+	}
+
+	uint64_t total_minutes = 0;
+	if (root["uptime"].empty() == false)
+	{
+		uint64_t msec = root["uptime"].asUInt64();
+		total_minutes = msec / (1000 * 60);
+	}
+	else if (root["uptimeS"].empty() == false)
+	{
+		uint64_t sec = root["uptimeS"].asUInt64();
+		total_minutes = sec / 60;
+	}
+	else if (root["timeH"].empty() == false)
+	{
+		uint64_t h = root["timeH"].asUInt64();
+		total_minutes = h * 60;
+	}
+	else
 		return "unknown";
 
-	if (root["uptime"].empty() == true)
-		return "unknown";
-
-	uint64_t msec = root["uptime"].asUInt64();
-	char timestring[32] = "";
-
-	uint64_t total_minutes = msec / (1000 * 60);
 	int days = static_cast<int>(total_minutes / (24 * 60));
 	int hours = static_cast<int>(total_minutes / 60 - days * 24);
 	int mins = static_cast<int>(total_minutes - days * 24 * 60 - hours * 60);   //sec / 60 - day * (24 * 60) - hour * 60;
 
+	char timestring[32];
 	sprintf(timestring, "%d:%02d:%02d", days, hours, mins);
 
 	return timestring;
 }
 
-int BleBox::GetDeviceType(const std::string &IPAddress)
+int BleBox::GetDeviceType(const std::string & IPAddress)
 {
 	std::map<const std::string, const int>::const_iterator itt = m_devices.find(IPAddress);
 	if (itt == m_devices.end())
 	{
-		_log.Log(LOG_ERROR, "BleBox: unknown device (%s)", IPAddress.c_str());
+		Log(LOG_ERROR, "unknown device (%s)", IPAddress.c_str());
 		return -1;
 	}
 	else
@@ -1067,7 +1147,7 @@ int BleBox::GetDeviceType(const std::string &IPAddress)
 	}
 }
 
-void BleBox::AddNode(const std::string &name, const std::string &IPAddress)
+void BleBox::AddNode(const std::string & name, const std::string & IPAddress, bool reloadNodes)
 {
 	std::string deviceApiName = IdentifyDevice(IPAddress);
 	if (deviceApiName.empty())
@@ -1097,7 +1177,11 @@ void BleBox::AddNode(const std::string &name, const std::string &IPAddress)
 		{
 			m_sql.InsertDevice(m_HwdID, szIdx.c_str(), 0, (uint8_t)deviceType.deviceID, deviceType.subType, deviceType.switchType, 0, "Unavailable", name);
 		}
-	ReloadNodes();
+
+	if (reloadNodes)
+	{
+		ReloadNodes();
+	}
 }
 
 void BleBox::RemoveNode(const int id)
@@ -1129,9 +1213,9 @@ bool BleBox::LoadNodes()
 	result = m_sql.safe_query("SELECT ID,DeviceID FROM DeviceStatus WHERE (HardwareID==%d)", m_HwdID);
 	if (!result.empty())
 	{
-		for (const auto & itt : result)
+		for (const auto& itt : result)
 		{
-			const std::vector<std::string> &sd = itt;
+			const std::vector<std::string>& sd = itt;
 			std::string addressIP = GetDeviceIP(sd[1]);
 
 			std::string deviceApiName = IdentifyDevice(addressIP);
@@ -1148,7 +1232,7 @@ bool BleBox::LoadNodes()
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "BleBox: Cannot find any devices...");
+		Log(LOG_ERROR, "Cannot find any devices...");
 		return false;
 	}
 }
@@ -1161,13 +1245,13 @@ void BleBox::ReloadNodes()
 
 void BleBox::UpdateFirmware()
 {
-	for (const auto & itt : m_devices)
+	for (const auto& itt : m_devices)
 	{
 		Json::Value root = SendCommand(itt.first, "/api/ota/update", 2);
 	}
 }
 
-void BleBox::SearchNodes(const std::string &ipmask)
+void BleBox::SearchNodes(const std::string & ipmask)
 {
 	std::vector<std::string> strarray;
 	StringSplit(ipmask, ".", strarray); // ipmask - expected "x.y.z.*"
@@ -1178,26 +1262,26 @@ void BleBox::SearchNodes(const std::string &ipmask)
 	if (!isInt(strarray[0]) || !isInt(strarray[1]) || !isInt(strarray[2]))
 		return;
 
+	std::vector<std::thread> searchingThreads;
 
-	std::vector< std::shared_ptr<std::thread> > searchingThreads;
+	std::stringstream sstr;
+	sstr << strarray[0] << "." << strarray[1] << "." << strarray[2] << ".";
+	const std::string ipStart = sstr.str();
 
 	for (unsigned int i = 1; i < 255; ++i)
 	{
-		std::stringstream sstr;
-		sstr << strarray[0] << "." << strarray[1] << "." << strarray[2] << "." << i;
-		std::string IPAddress = sstr.str();
+		std::string IPAddress = ipStart + std::to_string(i);
 
-		std::map<const std::string, const int>::const_iterator itt = m_devices.find(IPAddress);
-		if (itt == m_devices.end())
+		if (m_devices.find(IPAddress) == m_devices.end())
 		{
-			auto thread = std::make_shared<std::thread>(&BleBox::AddNode, this, "unknown", IPAddress);
-			SetThreadName(thread->native_handle(), "BleBox_Search");
-			searchingThreads.push_back(thread);
+			searchingThreads.emplace_back(&BleBox::AddNode, this, "unknown", IPAddress, false);
 		}
 	}
 
-	for (size_t i = 1; i <= searchingThreads.size(); ++i)
+	for (auto& thread : searchingThreads)
 	{
-		searchingThreads[i - 1]->join();
+		thread.join();
 	}
+
+	ReloadNodes();
 }

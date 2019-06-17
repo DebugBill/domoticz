@@ -33,7 +33,6 @@ ZWaveBase::ZWaveBase()
 	m_LastRemovedNode = -1;
 	m_ControllerCommandStartTime = 0;
 	m_bInitState = true;
-	m_stoprequested = false;
 }
 
 
@@ -43,8 +42,9 @@ ZWaveBase::~ZWaveBase(void)
 
 bool ZWaveBase::StartHardware()
 {
+	RequestStart();
+
 	m_bInitState=true;
-	m_stoprequested=false;
 	m_updateTime=0;
 	m_LastIncludedNode=0;
 	m_bControllerCommandInProgress=false;
@@ -61,7 +61,7 @@ bool ZWaveBase::StopHardware()
 {
 	if (m_thread)
 	{
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
 		m_thread.reset();
 	}
@@ -77,11 +77,8 @@ void ZWaveBase::Do_Work()
 #endif
 	int msec_counter = 0;
 	int sec_counter = 0;
-	while (!m_stoprequested)
+	while (!IsStopRequested(500))
 	{
-		sleep_milliseconds(500);
-		if (m_stoprequested)
-			return;
 		msec_counter++;
 		if (msec_counter == 2)
 		{
@@ -122,11 +119,7 @@ void ZWaveBase::Do_Work()
 std::string ZWaveBase::GenerateDeviceStringID(const _tZWaveDevice *pDevice)
 {
 	std::stringstream sstr;
-	sstr << pDevice->nodeID << ".instances." << pDevice->instanceID << ".commandClasses." << pDevice->commandClassID << ".data";
-	if (pDevice->scaleID!=-1)
-	{
-		sstr << "." << pDevice->scaleID;
-	}
+	sstr << pDevice->nodeID << ".instance." << pDevice->instanceID << ".index." << pDevice->indexID << ".commandClasses." << pDevice->commandClassID;
 	return sstr.str();
 }
 
@@ -256,10 +249,10 @@ void ZWaveBase::SendSwitchIfNotExists(const _tZWaveDevice *pDevice)
 		//make device ID
 
 		//To fix all problems it should be
-		//ID1 = (unsigned char)((pDevice->nodeID & 0xFF00) >> 8);
-		//ID2 = (unsigned char)pDevice->nodeID & 0xFF;
-		//ID3 = pDevice->instanceID;
-		//ID4 = pDevice->indexID;
+		//ID1 = (unsigned char)pDevice->nodeID;
+		//ID2 = pDevice->instanceID;
+		//ID3 = (pDevice->indexID&0xFF00)>>8;
+		//ID4 = pDevice->indexID&&0x00FF;
 		//but current users gets new devices in this case
 
 		unsigned char ID1 = 0;
@@ -372,8 +365,13 @@ void ZWaveBase::SendDevice2Domoticz(const _tZWaveDevice *pDevice)
 		int level = pDevice->intvalue;
 
 		// Simple on/off device, make sure we only have 0 or 255
-		if ((pDevice->devType == ZDTYPE_SWITCH_NORMAL)|| (pDevice->devType == ZDTYPE_CENTRAL_SCENE))
+		if (pDevice->devType == ZDTYPE_SWITCH_NORMAL)
 			level = (level == 0) ? 0 : 255;
+		else if (pDevice->devType == ZDTYPE_CENTRAL_SCENE)
+		{
+			level = 255;
+			gswitch.unitcode = pDevice->intvalue;
+		}
 
 		// Now check the values
 		if (level == 0)
@@ -443,7 +441,7 @@ void ZWaveBase::SendDevice2Domoticz(const _tZWaveDevice *pDevice)
 		umeter.id2 = ID2;
 		umeter.id3 = ID3;
 		umeter.id4 = ID4;
-		umeter.dunit = pDevice->scaleID;
+		umeter.dunit = 2;
 		umeter.fusage = pDevice->floatValue;
 		sDecodeRXMessage(this, (const unsigned char *)&umeter, NULL, BatLevel);
 
@@ -694,7 +692,7 @@ void ZWaveBase::SendDevice2Domoticz(const _tZWaveDevice *pDevice)
 		lmeter.id2=ID2;
 		lmeter.id3=ID3;
 		lmeter.id4=ID4;
-		lmeter.dunit=pDevice->scaleID;
+		lmeter.dunit=255;
 		lmeter.fLux=pDevice->floatValue;
 		lmeter.battery_level= BatLevel;
 		sDecodeRXMessage(this, (const unsigned char *)&lmeter, NULL, BatLevel);

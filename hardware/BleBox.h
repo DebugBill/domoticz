@@ -19,11 +19,10 @@ public:
 	virtual ~BleBox();
 	bool WriteToHardware(const char *pdata, const unsigned char length) override;
 	int GetDeviceType(const std::string &IPAddress);
-	void AddNode(const std::string &name, const std::string &IPAddress);
+	void AddNode(const std::string &name, const std::string &IPAddress, bool reloadNodes);
 	void RemoveNode(const int id);
 	void RemoveAllNodes();
 	void SetSettings(const int pollIntervalsec);
-	void Restart();
 	void UpdateFirmware();
 	Json::Value GetApiDeviceState(const std::string &IPAddress);
 	bool DoesNodeExists(const Json::Value &root, const std::string &node);
@@ -50,7 +49,6 @@ private:
 	void UnloadNodes();
 	bool LoadNodes();
 private:
-	volatile bool m_stoprequested;
 	int m_PollInterval;
 	std::shared_ptr<std::thread> m_thread;
 	std::map<const std::string, const int> m_devices;

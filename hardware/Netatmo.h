@@ -39,13 +39,14 @@ private:
 	bool m_bForceSetpointUpdate;
 	time_t m_tSetpointUpdateTime;
 
-	volatile bool m_stoprequested;
 	std::shared_ptr<std::thread> m_thread;
 
 	time_t m_nextRefreshTs;
 
 	std::map<int,float> m_RainOffset;
 	std::map<int, float> m_OldRainCounter;
+
+	std::map<int, bool> m_bNetatmoRefreshed;
 
 	void Init();
 	bool StartHardware() override;

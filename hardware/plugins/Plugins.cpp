@@ -32,6 +32,10 @@
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 
 extern std::string szWWWFolder;
+extern std::string szStartupFolder;
+extern std::string szUserDataFolder;
+extern std::string szWebRoot;
+extern std::string dbasefile;
 extern std::string szAppVersion;
 extern std::string szAppHash;
 extern std::string szAppDate;
@@ -143,7 +147,7 @@ namespace Plugins {
 			}
 			if (pCode && pCode->co_name)
 			{
-				if (sFuncName.length()) sFuncName += "\\";
+				if (!sFuncName.empty()) sFuncName += "\\";
 				PyBytesObject*	pFuncBytes = (PyBytesObject*)PyUnicode_AsASCIIString(pCode->co_name);
 				sFuncName = pFuncBytes->ob_sval;
 			}
@@ -188,7 +192,7 @@ namespace Plugins {
 			}
 			if (pCode && pCode->co_name)
 			{
-				if (sFuncName.length()) sFuncName += "\\";
+				if (!sFuncName.empty()) sFuncName += "\\";
 				PyBytesObject*	pFuncBytes = (PyBytesObject*)PyUnicode_AsASCIIString(pCode->co_name);
 				sFuncName = pFuncBytes->ob_sval;
 			}
@@ -429,7 +433,7 @@ namespace Plugins {
 			else
 			{
 				std::string		sNotifierName = szNotifier;
-				if ((!sNotifierName.length()) || (sNotifierName.find_first_of(' ') != -1))
+				if ((sNotifierName.empty()) || (sNotifierName.find_first_of(' ') != std::string::npos))
 				{
 					_log.Log(LOG_ERROR, "(%s) failed to parse parameters, valid Notifier Name expected, received '%s'.", pModState->pPlugin->m_Name.c_str(), szNotifier);
 				}
@@ -486,6 +490,65 @@ namespace Plugins {
 		return Py_None;
 	}
 
+	static PyObject*	PyDomoticz_Configuration(PyObject *self, PyObject *args, PyObject* kwds)
+	{
+		PyObject*		pConfig = Py_None;
+		std::string		sConfig;
+		std::vector<std::vector<std::string> > result;
+
+		Py_INCREF(Py_None);
+
+		module_state*	pModState = ((struct module_state*)PyModule_GetState(self));
+		if (!pModState)
+		{
+			_log.Log(LOG_ERROR, "CPlugin:%s, unable to obtain module state.", __func__);
+		}
+		else if (!pModState->pPlugin)
+		{
+			_log.Log(LOG_ERROR, "CPlugin:%s, illegal operation, Plugin has not started yet.", __func__);
+		}
+		else
+		{
+			CPluginProtocolJSON* pProtocol = (CPluginProtocolJSON*)CPluginProtocol::Create("JSON");
+			PyObject* pNewConfig = NULL;
+			static char* kwlist[] = { "Config", NULL };
+			if (PyArg_ParseTupleAndKeywords(args, kwds, "O", kwlist , &pNewConfig))
+			{
+				// Python object supplied if it is not a dictionary
+				if (!PyDict_Check(pNewConfig))
+				{
+					_log.Log(LOG_ERROR, "CPlugin:%s, Function expects no parameter or a Dictionary.", __func__);
+					return pConfig;
+				}
+				else
+				{
+					//  Convert to JSON and store
+					sConfig = pProtocol->PythontoJSON(pNewConfig);
+
+					// Update database
+					m_sql.safe_query("UPDATE Hardware SET Configuration='%q' WHERE (ID == %d)", sConfig.c_str(), pModState->pPlugin->m_HwdID);
+				}
+			}
+			PyErr_Clear();
+
+			// Read the configuration 
+			result = m_sql.safe_query("SELECT Configuration FROM Hardware WHERE (ID==%d)", pModState->pPlugin->m_HwdID);
+			if (result.empty())
+			{
+				_log.Log(LOG_ERROR, "CPlugin:%s, Hardware ID not found in database '%d'.", __func__, pModState->pPlugin->m_HwdID);
+				return pConfig;
+			}
+
+			// Build a Python structure to return 
+			sConfig = result[0][0];
+			if (sConfig.empty()) sConfig = "{}";
+			pConfig = pProtocol->JSONtoPython(sConfig);
+			Py_DECREF(Py_None);
+		}
+
+		return pConfig;
+	}
+
 	static PyMethodDef DomoticzMethods[] = {
 		{ "Debug", PyDomoticz_Debug, METH_VARARGS, "Write a message to Domoticz log only if verbose logging is turned on." },
 		{ "Log", PyDomoticz_Log, METH_VARARGS, "Write a message to Domoticz log." },
@@ -495,6 +558,7 @@ namespace Plugins {
 		{ "Heartbeat", PyDomoticz_Heartbeat, METH_VARARGS, "Set the heartbeat interval, default 10 seconds." },
 		{ "Notifier", PyDomoticz_Notifier, METH_VARARGS, "Enable notification handling with supplied name." },
 		{ "Trace", PyDomoticz_Trace, METH_VARARGS, "Enable/Disable line level Python tracing." },
+		{ "Configuration", (PyCFunction)PyDomoticz_Configuration, METH_VARARGS | METH_KEYWORDS, "Retrieve and Store structured plugin configuration." },
 		{ NULL, NULL, 0, NULL }
 	};
 
@@ -556,7 +620,6 @@ namespace Plugins {
 
 
 	CPlugin::CPlugin(const int HwdID, const std::string &sName, const std::string &sPluginKey) :
-		m_stoprequested(false),
 		m_PluginKey(sPluginKey),
 		m_iPollInterval(10),
 		m_Notifier(NULL),
@@ -624,7 +687,7 @@ namespace Plugins {
 					}
 					Py_XDECREF(pString);
 				}
-				if (sError.length())
+				if (!sError.empty())
 				{
 					_log.Log(LOG_ERROR, "(%s) Module Import failed: '%s'", m_Name.c_str(), sError.c_str());
 					sError = "";
@@ -655,7 +718,7 @@ namespace Plugins {
 					Py_XDECREF(pString);
 				}
 
-				if (sError.length())
+				if (!sError.empty())
 				{
 					if ((lineno > 0) && (lineno < 1000))
 					{
@@ -671,17 +734,16 @@ namespace Plugins {
 				if (PyObject_HasAttrString(pExcept, "text"))
 				{
 					PyObject*		pString = PyObject_GetAttrString(pValue, "text");
-					PyBytesObject*	pBytes = (PyBytesObject*)PyUnicode_AsASCIIString(pString);
-					_log.Log(LOG_ERROR, "(%s) Error Line '%s'", m_Name.c_str(), pBytes->ob_sval);
+					std::string		sUTF = PyUnicode_AsUTF8(pString);
+					_log.Log(LOG_ERROR, "(%s) Error Line '%s'", m_Name.c_str(), sUTF.c_str());
 					Py_XDECREF(pString);
-					Py_XDECREF(pBytes);
 				}
 				else
 				{
 					_log.Log(LOG_ERROR, "(%s) Error Line details not available.", m_Name.c_str());
 				}
 
-				if (sError.length())
+				if (!sError.empty())
 				{
 					_log.Log(LOG_ERROR, "(%s) Import detail: %s", m_Name.c_str(), sError.c_str());
 				}
@@ -760,7 +822,7 @@ namespace Plugins {
 					FuncName = pFuncBytes->ob_sval;
 					Py_XDECREF(pFuncBytes);
 				}
-				if (FileName.length())
+				if (!FileName.empty())
 					_log.Log(LOG_ERROR, "(%s) ----> Line %d in '%s', function %s", m_Name.c_str(), lineno, FileName.c_str(), FuncName.c_str());
 				else
 					_log.Log(LOG_ERROR, "(%s) ----> Line %d in '%s'", m_Name.c_str(), lineno, FuncName.c_str());
@@ -820,6 +882,8 @@ namespace Plugins {
 	{
 		if (m_bIsStarted) StopHardware();
 
+		RequestStart();
+
 		//	Add start command to message queue
 		m_bIsStarting = true;
 		MessagePlugin(new InitializeMessage(this));
@@ -868,13 +932,11 @@ namespace Plugins {
 			// loop on plugin to finish startup
 			while (m_bIsStarting)
 			{
-				while (m_bIsStarting)
-				{
-					sleep_milliseconds(100);
-				}
+				sleep_milliseconds(100);
 			}
 
-			m_stoprequested = true;
+			RequestStop();
+
 			if (m_bIsStarted)
 			{
 				// If we have connections queue disconnects
@@ -899,12 +961,12 @@ namespace Plugins {
 					// otherwise just signal stop
 					MessagePlugin(new onStopCallback(this));
 				}
-			}
 
-			// loop on stop to be processed
-			while (m_bIsStarted)
-			{
-				sleep_milliseconds(100);
+				// loop on stop to be processed
+				while (m_bIsStarted)
+				{
+					sleep_milliseconds(100);
+				}
 			}
 
 			_log.Log(LOG_STATUS, "(%s) Stopping threads.", m_Name.c_str());
@@ -936,7 +998,7 @@ namespace Plugins {
 		_log.Log(LOG_STATUS, "(%s) Entering work loop.", m_Name.c_str());
 		m_LastHeartbeat = mytime(NULL);
 		int scounter = m_iPollInterval * 2;
-		while (!m_stoprequested)
+		while (!IsStopRequested(500))
 		{
 			if (!--scounter)
 			{
@@ -966,17 +1028,9 @@ namespace Plugins {
 			{
 				_log.Log(LOG_NORM, "(%s) Transport vector changed during %s loop, continuing.", m_Name.c_str(), __func__);
 			}
-
-			sleep_milliseconds(500);
 		}
 
 		_log.Log(LOG_STATUS, "(%s) Exiting work loop.", m_Name.c_str());
-	}
-
-	void CPlugin::Restart()
-	{
-		StopHardware();
-		StartHardware();
 	}
 
 	bool CPlugin::Initialise()
@@ -1014,9 +1068,79 @@ namespace Plugins {
 					break;
 				}
 			}
+
 			std::wstring	sPath = ssPath.str() + sSeparator;
 			sPath += Py_GetPath();
+
+			try
+			{
+				//
+				//	Python loads the 'site' module automatically and adds extra search directories for module loading
+				//	This code makes the plugin framework function the same way
+				//
+				void*	pSiteModule = PyImport_ImportModule("site");
+				if (!pSiteModule)
+				{
+					_log.Log(LOG_ERROR, "(%s) failed to load 'site' module, continuing.", m_PluginKey.c_str());
+				}
+				else
+				{
+					PyObject*	pFunc = PyObject_GetAttrString((PyObject*)pSiteModule, "getsitepackages");
+					if (pFunc && PyCallable_Check(pFunc))
+					{
+						PyObject*	pSites = PyObject_CallObject(pFunc, NULL);
+						if (!pSites)
+						{
+							LogPythonException("getsitepackages");
+						}
+						else
+							for (Py_ssize_t i = 0; i < PyList_Size(pSites); i++)
+							{
+								PyObject*	pSite = PyList_GetItem(pSites, i);
+								if (pSite && PyUnicode_Check(pSite))
+								{
+									std::wstringstream ssPath;
+									ssPath << PyUnicode_AsUTF8(pSite);
+									sPath += sSeparator + ssPath.str();
+								}
+							}
+						Py_XDECREF(pSites);
+					}
+				}
+			}
+			catch (...)
+			{
+				_log.Log(LOG_ERROR, "(%s) exception loading 'site' module, continuing.", m_PluginKey.c_str());
+				PyErr_Clear();
+			}
+
+			// Update the path itself
 			PySys_SetPath((wchar_t*)sPath.c_str());
+
+			try
+			{
+				//
+				//	Load the 'faulthandler' module to get a python stackdump during a segfault
+				//
+				void*	pFaultModule = PyImport_ImportModule("faulthandler");
+				if (!pFaultModule)
+				{
+					_log.Log(LOG_ERROR, "(%s) failed to load 'faulthandler' module, continuing.", m_PluginKey.c_str());
+				}
+				else
+				{
+					PyObject*	pFunc = PyObject_GetAttrString((PyObject*)pFaultModule, "enable");
+					if (pFunc && PyCallable_Check(pFunc))
+					{
+						PyObject_CallObject(pFunc, NULL);
+					}
+				}
+			}
+			catch (...)
+			{
+				_log.Log(LOG_ERROR, "(%s) exception loading 'faulthandler' module, continuing.", m_PluginKey.c_str());
+				PyErr_Clear();
+			}
 
 			try
 			{
@@ -1031,6 +1155,7 @@ namespace Plugins {
 			catch (...)
 			{
 				_log.Log(LOG_ERROR, "(%s) exception loading 'plugin.py', Python Path used was '%S'.", m_PluginKey.c_str(), sPath.c_str());
+				PyErr_Clear();
 			}
 
 			// Domoticz callbacks need state so they know which plugin to act on
@@ -1044,7 +1169,6 @@ namespace Plugins {
 			pModState->pPlugin = this;
 
 			//Start worker thread
-			m_stoprequested = false;
 			m_thread = std::make_shared<std::thread>(&CPlugin::Do_Work, this);
 			std::string plugin_name = "Plugin_" + m_PluginKey;
 			SetThreadName(m_thread->native_handle(), plugin_name.c_str());
@@ -1084,7 +1208,7 @@ namespace Plugins {
 						if (pAttributeValue)
 						{
 							m_Author = pAttributeValue;
-							if (sExtraDetail.length()) sExtraDetail += ", ";
+							if (!sExtraDetail.empty()) sExtraDetail += ", ";
 							sExtraDetail += "author '";
 							sExtraDetail += pAttributeValue;
 							sExtraDetail += "'";
@@ -1129,6 +1253,9 @@ Error:
 			}
 			Py_DECREF(pObj);
 
+			std::string sLanguage = "en";
+			m_sql.GetPreferencesVar("Language", sLanguage);
+
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT Name, Address, Port, SerialPort, Username, Password, Extra, Mode1, Mode2, Mode3, Mode4, Mode5, Mode6 FROM Hardware WHERE (ID==%d)", m_HwdID);
 			if (!result.empty())
@@ -1139,6 +1266,11 @@ Error:
 					std::vector<std::string> sd = *itt;
 					const char*	pChar = sd[0].c_str();
 					ADD_STRING_TO_DICT(pParamsDict, "HomeFolder", m_HomeFolder);
+					ADD_STRING_TO_DICT(pParamsDict, "StartupFolder", szStartupFolder);
+					ADD_STRING_TO_DICT(pParamsDict, "UserDataFolder", szUserDataFolder);
+					ADD_STRING_TO_DICT(pParamsDict, "WebRoot", szWebRoot);
+					ADD_STRING_TO_DICT(pParamsDict, "Database", dbasefile);
+					ADD_STRING_TO_DICT(pParamsDict, "Language", sLanguage);
 					ADD_STRING_TO_DICT(pParamsDict, "Version", m_Version);
 					ADD_STRING_TO_DICT(pParamsDict, "Author", m_Author);
 					ADD_STRING_TO_DICT(pParamsDict, "Name", sd[0]);
@@ -1158,10 +1290,6 @@ Error:
 					ADD_STRING_TO_DICT(pParamsDict, "DomoticzVersion", szAppVersion);
 					ADD_STRING_TO_DICT(pParamsDict, "DomoticzHash", szAppHash);
 					ADD_STRING_TO_DICT(pParamsDict, "DomoticzBuildTime", szAppDate);
-
-					// Remember these for use with some protocols
-					m_Username = sd[4];
-					m_Password = sd[5];
 				}
 			}
 
@@ -1258,7 +1386,7 @@ Error:
 			pConnection->pProtocol = NULL;
 		}
 		std::string	sProtocol = PyUnicode_AsUTF8(pConnection->Protocol);
-		pConnection->pProtocol = CPluginProtocol::Create(sProtocol, m_Username, m_Password);
+		pConnection->pProtocol = CPluginProtocol::Create(sProtocol);
 		if (m_bDebug & PDM_CONNECTION) _log.Log(LOG_NORM, "(%s) Protocol set to: '%s'.", m_Name.c_str(), sProtocol.c_str());
 	}
 
@@ -1289,7 +1417,7 @@ Error:
 		{
 			std::string	sPort = PyUnicode_AsUTF8(pConnection->Port);
 			if (m_bDebug & PDM_CONNECTION) _log.Log(LOG_NORM, "(%s) Transport set to: '%s', %s:%s.", m_Name.c_str(), sTransport.c_str(), sAddress.c_str(), sPort.c_str());
-			if (!sPort.length())
+			if (sPort.empty())
 			{
 				_log.Log(LOG_ERROR, "(%s) No port number specified for %s connection to: '%s'.", m_Name.c_str(), sTransport.c_str(), sAddress.c_str());
 				return;
@@ -1429,7 +1557,7 @@ Error:
 				std::string	sPort = PyUnicode_AsUTF8(pConnection->Port);
 				if (m_bDebug & PDM_CONNECTION)
 				{
-					if (sPort.length())
+					if (!sPort.empty())
 						_log.Log(LOG_NORM, "(%s) Transport set to: '%s', %s:%s for '%s'.", m_Name.c_str(), sTransport.c_str(), sAddress.c_str(), sPort.c_str(), sConnection.c_str());
 					else
 						_log.Log(LOG_NORM, "(%s) Transport set to: '%s', %s for '%s'.", m_Name.c_str(), sTransport.c_str(), sAddress.c_str(), sConnection.c_str());
@@ -1441,6 +1569,12 @@ Error:
 				_log.Log(LOG_ERROR, "(%s) No transport, write directive to '%s' ignored.", m_Name.c_str(), sConnection.c_str());
 				return;
 			}
+		}
+
+		// Make sure there is a protocol to encode the data
+		if (!pConnection->pProtocol)
+		{
+			pConnection->pProtocol = new CPluginProtocol();
 		}
 
 		std::vector<byte>	vWriteData = pConnection->pProtocol->ProcessOutbound(pMessage);
@@ -1474,7 +1608,7 @@ Error:
 				std::string	sTransport = PyUnicode_AsUTF8(pConnection->Transport);
 				std::string	sAddress = PyUnicode_AsUTF8(pConnection->Address);
 				std::string	sPort = PyUnicode_AsUTF8(pConnection->Port);
-				if ((sTransport == "Serial") || (!sPort.length()))
+				if ((sTransport == "Serial") || (sPort.empty()))
 					_log.Log(LOG_NORM, "(%s) Disconnect directive received for '%s'.", m_Name.c_str(), sAddress.c_str());
 				else
 					_log.Log(LOG_NORM, "(%s) Disconnect directive received for '%s:%s'.", m_Name.c_str(), sAddress.c_str(), sPort.c_str());
@@ -1489,7 +1623,7 @@ Error:
 				pConnection->pTransport = NULL;
 
 				// Plugin exiting and all connections have disconnect messages queued
-				if (m_stoprequested && !m_Transports.size())
+				if (IsStopRequested(0) && !m_Transports.size())
 				{
 					MessagePlugin(new onStopCallback(this));
 				}
@@ -1585,7 +1719,7 @@ Error:
 				std::string	sTransport = PyUnicode_AsUTF8(pConnection->Transport);
 				std::string	sAddress = PyUnicode_AsUTF8(pConnection->Address);
 				std::string	sPort = PyUnicode_AsUTF8(pConnection->Port);
-				if ((sTransport == "Serial") || (!sPort.length()))
+				if ((sTransport == "Serial") || (sPort.empty()))
 					_log.Log(LOG_NORM, "(%s) Disconnect event received for '%s'.", m_Name.c_str(), sAddress.c_str());
 				else
 					_log.Log(LOG_NORM, "(%s) Disconnect event received for '%s:%s'.", m_Name.c_str(), sAddress.c_str(), sPort.c_str());
@@ -1602,7 +1736,7 @@ Error:
 			}
 
 			// Plugin exiting and all connections have disconnect messages queued
-			if (m_stoprequested && !m_Transports.size())
+			if (IsStopRequested(0) && !m_Transports.size())
 			{
 				MessagePlugin(new onStopCallback(this));
 			}
@@ -1626,7 +1760,7 @@ Error:
 		try
 		{
 			// Callbacks MUST already have taken the PythonMutex lock otherwise bad things will happen
-			if (m_PyModule && sHandler.length())
+			if (m_PyModule && !sHandler.empty())
 			{
 				PyObject*	pFunc = PyObject_GetAttrString((PyObject*)m_PyModule, sHandler.c_str());
 				if (pFunc && PyCallable_Check(pFunc))
@@ -1711,7 +1845,7 @@ Error:
 
 				PyObject*	pKey = PyUnicode_FromString(sd[0].c_str());
 				PyObject*	pValue = NULL;
-				if (sd[2].length())
+				if (!sd[2].empty())
 				{
 					pValue = PyUnicode_FromString(sd[2].c_str());
 				}
@@ -1943,13 +2077,14 @@ Error:
 					std::string szCustom = ExtraData.substr(posCustom, ExtraData.find("|", posCustom) - posCustom);
 					szTypeImage = GetCustomIcon(szCustom);
 				}
-				else szTypeImage = "Light48";
+				else 
+					szTypeImage = "Light48";
 				break;
 			case STYPE_Doorbell:
 				szTypeImage = "doorbell48";
 				break;
 			case STYPE_Contact:
-				szTypeImage = "contact48";
+				szTypeImage = "Contact48";
 				break;
 			case STYPE_Blinds:
 			case STYPE_BlindsPercentage:
@@ -1972,19 +2107,19 @@ Error:
 				szTypeImage = "motion48";
 				break;
 			case STYPE_PushOn:
-				szTypeImage = "pushon48";
+				szTypeImage = "Push48";
 				break;
 			case STYPE_PushOff:
-				szTypeImage = "pushon48";
+				szTypeImage = "Push48";
 				break;
 			case STYPE_DoorContact:
-				szTypeImage = "door48";
+				szTypeImage = "Door48";
 				break;
 			case STYPE_DoorLock:
-				szTypeImage = "door48open";
+				szTypeImage = "Door48";
 				break;
 			case STYPE_DoorLockInverted:
-				szTypeImage = "door48";
+				szTypeImage = "Door48";
 				break;
 			case STYPE_Media:
 				if (posCustom >= 0)
@@ -1992,7 +2127,8 @@ Error:
 					std::string szCustom = ExtraData.substr(posCustom, ExtraData.find("|", posCustom) - posCustom);
 					szTypeImage = GetCustomIcon(szCustom);
 				}
-				else szTypeImage = "Media48";
+				else
+					szTypeImage = "Media48";
 				break;
 			default:
 				szTypeImage = "logo";

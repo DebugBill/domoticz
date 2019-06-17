@@ -1,5 +1,7 @@
 define(['app'], function (app) {
-	app.controller('LightsController', ['$scope', '$rootScope', '$location', '$http', '$interval', 'permissions', function ($scope, $rootScope, $location, $http, $interval, permissions) {
+	app.controller('LightsController', function ($scope, $rootScope, $location, $http, $interval, $route, $routeParams, permissions) {
+		var $element = $('#main-view #lightcontent').last();
+
 		$scope.HasInitializedAddManualDialog = false;
 
 		MakeFavorite = function (id, isfavorite) {
@@ -371,6 +373,7 @@ define(['app'], function (app) {
 								}
 								else if (item.SubType == "Evohome") {
 									img = EvohomeImg(item);
+									bigtext = GetLightStatusText(item);
 								}
 								else if (item.SwitchType == "X10 Siren") {
 									if (
@@ -389,46 +392,41 @@ define(['app'], function (app) {
 									img = '<img src="images/doorbell48.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 								}
 								else if (item.SwitchType == "Push On Button") {
-									if (item.InternalState == "On") {
-										img = '<img src="images/pushon48.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
-									}
-									else {
-										img = '<img src="images/push48.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
-									}
+									img = '<img src="images/' + item.Image + '48_On.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
+								}
+								else if (item.SwitchType == "Push Off Button") {
+									img = '<img src="images/' + item.Image + '48_Off.png" title="' + $.t("Turn Off") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 								}
 								else if (item.SwitchType == "Door Contact") {
 									if (item.InternalState == "Open") {
-                                        img = '<img src="images/door48open.png" title="' + $.t(item.InternalState) + '" height="48" width="48">';
+                                        img = '<img src="images/' + item.Image + '48_On.png" title="' + $.t(item.InternalState) + '" height="48" width="48">';
 									}
 									else {
-                                        img = '<img src="images/door48.png" title="' + $.t(item.InternalState) + '" height="48" width="48">';
+                                        img = '<img src="images/' + item.Image + '48_Off.png" title="' + $.t(item.InternalState) + '" height="48" width="48">';
 									}
 								}
 								else if (item.SwitchType == "Door Lock") {
 									if (item.InternalState == "Unlocked") {
-										img = '<img src="images/door48open.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
+										img = '<img src="images/' + item.Image + '48_On.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 									}
 									else {
-										img = '<img src="images/door48.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
+										img = '<img src="images/' + item.Image + '48_Off.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 									}
 								}
 								else if (item.SwitchType == "Door Lock Inverted") {
 									if (item.InternalState == "Unlocked") {
-										img = '<img src="images/door48open.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
+										img = '<img src="images/' + item.Image + '48_On.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 									}
 									else {
-										img = '<img src="images/door48.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
+										img = '<img src="images/' + item.Image + '48_Off.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 									}
-								}
-								else if (item.SwitchType == "Push Off Button") {
-									img = '<img src="images/pushoff48.png" title="' + $.t("Turn Off") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 								}
 								else if (item.SwitchType == "Contact") {
 									if (item.Status == 'Closed') {
-										img = '<img src="images/contact48.png" height="48" width="48">';
+										img = '<img src="images/' + item.Image + '48_Off.png" height="48" width="48">';
 									}
 									else {
-										img = '<img src="images/contact48_open.png" height="48" width="48">';
+										img = '<img src="images/' + item.Image + '48_On.png" height="48" width="48">';
 									}
 								}
 								else if ((item.SwitchType == "Blinds") || (item.SwitchType.indexOf("Venetian Blinds") == 0)) {
@@ -677,7 +675,11 @@ define(['app'], function (app) {
 										img += '<img src="images/' + item.Image + '48_On.png" title="' + $.t("Turn Off") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48">';
 									}
 								}
-								else if ((item.SubType.indexOf("Itho") == 0) || (item.SubType.indexOf("Lucci") == 0)) {
+								else if (
+									(item.SubType.indexOf("Itho") == 0) ||
+									(item.SubType.indexOf("Lucci") == 0) ||
+									(item.SubType.indexOf("Westinghouse") == 0)
+									) {
 									img = $(id + " #img").html();
 								}
 								else {
@@ -741,7 +743,7 @@ define(['app'], function (app) {
 												}
 												xhtm += '<button type="button" class="btn btn-small ';
 												if ((index * 10) == item.LevelInt) {
-													xhtm += 'btn-info"';
+													xhtm += 'btn-selected"';
 												}
 												else {
 													xhtm += 'btn-default"';
@@ -849,9 +851,10 @@ define(['app'], function (app) {
 
 			var i = 0;
 			var j = 0;
+			var roomPlanId = $routeParams.room || window.myglobals.LastPlanSelected;
 
 			$.ajax({
-				url: "json.htm?type=devices&filter=light&used=true&order=[Order]&plan=" + window.myglobals.LastPlanSelected,
+				url: "json.htm?type=devices&filter=light&used=true&order=[Order]&plan=" + roomPlanId,
 				async: false,
 				dataType: 'json',
 				success: function (data) {
@@ -916,7 +919,7 @@ define(['app'], function (app) {
 								'\t      <td id="name">' + item.Name + '</td>\n' +
 								'\t      <td id="bigtext">';
 							var bigtext = TranslateStatusShort(item.Status);
-							if (item.SwitchType === "Selector") {
+							if (item.SwitchType === "Selector" || item.SubType == "Evohome") {
 								bigtext = GetLightStatusText(item);
 							}
 							if (item.UsedByCamera == true) {
@@ -955,49 +958,44 @@ define(['app'], function (app) {
 								bAddTimer = false;
 							}
 							else if (item.SwitchType == "Push On Button") {
-								if (item.InternalState == "On") {
-									xhtm += '\t      <td id="img"><img src="images/pushon48.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
-								}
-								else {
-									xhtm += '\t      <td id="img"><img src="images/push48.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
-								}
+								xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_On.png" title="' + $.t("Turn On") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
+							}
+							else if (item.SwitchType == "Push Off Button") {
+								xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_Off.png" title="' + $.t("Turn Off") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
 							}
 							else if (item.SwitchType == "Door Contact") {
 								if (item.InternalState == "Open") {
-                                    xhtm += '\t      <td id="img"><img src="images/door48open.png" title="' + $.t(item.InternalState) + '" height="48" width="48"></td>\n';
+                                    xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_On.png" title="' + $.t(item.InternalState) + '" height="48" width="48"></td>\n';
 								}
 								else {
-                                    xhtm += '\t      <td id="img"><img src="images/door48.png" title="' + $.t(item.InternalState) + '" height="48" width="48"></td>\n';
+                                    xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_Off.png" title="' + $.t(item.InternalState) + '" height="48" width="48"></td>\n';
 								}
 								bAddTimer = false;
 							}
 							else if (item.SwitchType == "Door Lock") {
 								if (item.InternalState == "Unlocked") {
-									xhtm += '\t      <td id="img"><img src="images/door48open.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
+									xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_On.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
 								}
 								else {
-									xhtm += '\t      <td id="img"><img src="images/door48.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
+									xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_Off.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
 								}
 								bAddTimer = false;
 							}
 							else if (item.SwitchType == "Door Lock Inverted") {
 								if (item.InternalState == "Unlocked") {
-									xhtm += '\t      <td id="img"><img src="images/door48open.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
+									xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_On.png" title="' + $.t("Lock") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
 								}
 								else {
-									xhtm += '\t      <td id="img"><img src="images/door48.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
+									xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_Off.png" title="' + $.t("Unlock") + '" onclick="SwitchLight(' + item.idx + ',\'On\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
 								}
 								bAddTimer = false;
 							}
-							else if (item.SwitchType == "Push Off Button") {
-								xhtm += '\t      <td id="img"><img src="images/pushoff48.png" title="' + $.t("Turn Off") + '" onclick="SwitchLight(' + item.idx + ',\'Off\',RefreshLights,' + item.Protected + ');" class="lcursor" height="48" width="48"></td>\n';
-							}
 							else if (item.SwitchType == "Contact") {
 								if (item.Status == 'Closed') {
-									xhtm += '\t      <td id="img"><img src="images/contact48.png" height="48" width="48"></td>\n';
+									xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_Off.png" height="48" width="48"></td>\n';
 								}
 								else {
-									xhtm += '\t      <td id="img"><img src="images/contact48_open.png" height="48" width="48"></td>\n';
+									xhtm += '\t      <td id="img"><img src="images/' + item.Image + '48_On.png" height="48" width="48"></td>\n';
 								}
 								bAddTimer = false;
 							}
@@ -1257,7 +1255,10 @@ define(['app'], function (app) {
 								bAddTimer = false;
 								xhtm += '\t      <td id="img"><img src="images/Fan48_On.png" height="48" width="48" class="lcursor" onclick="ShowLucciDCPopup(event, ' + item.idx + ', ShowLights, ' + item.Protected + ');"></td>\n';
 							}
-							else if (item.SubType.indexOf("Lucci") == 0) {
+							else if (
+								(item.SubType.indexOf("Lucci") == 0) ||
+								(item.SubType.indexOf("Westinghouse") == 0)
+								) {
 							    bAddTimer = false;
 							    xhtm += '\t      <td id="img"><img src="images/Fan48_On.png" height="48" width="48" class="lcursor" onclick="ShowLucciPopup(event, ' + item.idx + ', ShowLights, ' + item.Protected + ');"></td>\n';
 							}
@@ -1312,7 +1313,7 @@ define(['app'], function (app) {
 							}
 							else if (item.SwitchType == "Selector") {
 								if (item.SelectorStyle === 0) {
-									xhtm += '<br/><div class="btn-group" style="margin-top: 4px;" id="selector' + item.idx + '" data-idx="' + item.idx + '" data-isprotected="' + item.Protected + '" data-level="' + item.LevelInt + '" data-levelnames="' + item.LevelNames + '" data-selectorstyle="' + item.SelectorStyle + '" data-levelname="' + escape(GetLightStatusText(item)) + '" data-leveloffhidden="' + item.LevelOffHidden + '" data-levelactions="' + item.LevelActions + '">';
+									xhtm += '<br/><div class="btn-group" style="display: block; margin-top: 4px;" id="selector' + item.idx + '" data-idx="' + item.idx + '" data-isprotected="' + item.Protected + '" data-level="' + item.LevelInt + '" data-levelnames="' + item.LevelNames + '" data-selectorstyle="' + item.SelectorStyle + '" data-levelname="' + escape(GetLightStatusText(item)) + '" data-leveloffhidden="' + item.LevelOffHidden + '" data-levelactions="' + item.LevelActions + '">';
 									var levelNames = b64DecodeUnicode(item.LevelNames).split('|');
 									$.each(levelNames, function (index, levelName) {
 										if ((index === 0) && (item.LevelOffHidden)) {
@@ -1320,7 +1321,7 @@ define(['app'], function (app) {
 										}
 										xhtm += '<button type="button" class="btn btn-small ';
 										if ((index * 10) == item.LevelInt) {
-											xhtm += 'btn-info"';
+											xhtm += 'btn-selected"';
 										}
 										else {
 											xhtm += 'btn-default"';
@@ -1403,28 +1404,33 @@ define(['app'], function (app) {
 				htmlcontent = '<h2>' + $.t('No Lights/Switches found or added in the system...') + '</h2>';
 			}
 			$('#modal').hide();
-			$('#lightcontent').html(tophtm + htmlcontent);
-			$('#lightcontent').i18n();
+			$element.html(tophtm + htmlcontent);
+			$element.i18n();
 			if (bShowRoomplan == true) {
 				$.each($.RoomPlans, function (i, item) {
 					var option = $('<option />');
 					option.attr('value', item.idx).text(item.name);
-					$("#lightcontent #comboroom").append(option);
+					$element.find("#comboroom").append(option);
 				});
-				if (typeof window.myglobals.LastPlanSelected != 'undefined') {
-					$("#lightcontent #comboroom").val(window.myglobals.LastPlanSelected);
+				if (typeof roomPlanId != 'undefined') {
+					$element.find("#comboroom").val(roomPlanId);
 				}
-				$("#lightcontent #comboroom").change(function () {
-					var idx = $("#lightcontent #comboroom option:selected").val();
+				$element.find("#comboroom").change(function () {
+					var idx = $element.find("#comboroom option:selected").val();
 					window.myglobals.LastPlanSelected = idx;
-					ShowLights();
+
+					$route.updateParams({
+						room: idx > 0 ? idx : undefined
+					});
+					$location.replace();
+					$scope.$apply();
 				});
 			}
 
 			if ($scope.config.AllowWidgetOrdering == true) {
 				if (permissions.hasPermission("Admin")) {
 					if (window.myglobals.ismobileint == false) {
-						$("#lightcontent .span4").draggable({
+						$element.find(".span4").draggable({
 							drag: function () {
 								if (typeof $scope.mytimer != 'undefined') {
 									$interval.cancel($scope.mytimer);
@@ -1435,10 +1441,10 @@ define(['app'], function (app) {
 							},
 							revert: true
 						});
-						$("#lightcontent .span4").droppable({
+						$element.find(".span4").droppable({
 							drop: function () {
 								var myid = $(this).attr("id");
-								var roomid = $("#lightcontent #comboroom option:selected").val();
+								var roomid = $element.find("#comboroom option:selected").val();
 								if (typeof roomid == 'undefined') {
 									roomid = 0;
 								}
@@ -1458,7 +1464,7 @@ define(['app'], function (app) {
 			$rootScope.RefreshTimeAndSun();
 
 			//Create Dimmer Sliders
-			$('#lightcontent .dimslider').slider({
+			$element.find('.dimslider').slider({
 				//Config
 				range: "min",
 				min: 0,
@@ -1529,7 +1535,7 @@ define(['app'], function (app) {
 			$scope.ResizeDimSliders();
 
 			//Create Selector selectmenu
-			$('#lightcontent .selectorlevels select').selectmenu({
+			$element.find('.selectorlevels select').selectmenu({
 				//Config
 				width: '75%',
 				value: 0,
@@ -1547,7 +1553,7 @@ define(['app'], function (app) {
 					select$.selectmenu("menuWidget").addClass('selectorlevels-menu');
 					select$.val(level);
 
-					$('#lightcontent #' + idx + " #bigtext").html(unescape(levelname));
+					$element.find('#' + idx + " #bigtext").html(unescape(levelname));
 				},
 				change: function (event, ui) { //When the user selects an option
 					var select$ = $(this),
@@ -1570,13 +1576,13 @@ define(['app'], function (app) {
 		}
 
 		$scope.ResizeDimSliders = function () {
-			var nobj = $("#lightcontent #name");
+			var nobj = $element.find("#name");
 			if (typeof nobj == 'undefined') {
 				return;
 			}
 			var width = nobj.width() - 50;
-			$("#lightcontent .dimslider").width(width);
-			$("#lightcontent .dimsmall").width(width - 48);
+			$element.find(".dimslider").width(width);
+			$element.find(".dimsmall").width(width - 48);
 		}
 
 		$.strPad = function (i, l, s) {
@@ -1657,8 +1663,13 @@ define(['app'], function (app) {
 				bIsType5 = 1;
 				totunits = 4;
 			}
-			else if ((lighttype == 55) || (lighttype == 57)) {
+			else if (lighttype == 55) {
 				//Livolo
+				bIsType5 = 1;
+				totunits = 128;
+			}
+			else if (lighttype == 57) {
+				//Aoke
 				bIsType5 = 1;
 			}
 			else if (lighttype == 100) {
@@ -1827,8 +1838,8 @@ define(['app'], function (app) {
 				$("#dialog-addmanuallightdevice #lighting3params").hide();
 				$("#dialog-addmanuallightdevice #fanparams").show();
 			}
-			else if ((lighttype == 305)||(lighttype == 306)) {
-				//Fan (Lucci Air)
+			else if ((lighttype == 305)||(lighttype == 306)||(lighttype == 307)) {
+				//Fan (Lucci Air/Westinghouse)
 				$("#dialog-addmanuallightdevice #lighting1params").hide();
 				$("#dialog-addmanuallightdevice #lighting2params").hide();
 				$("#dialog-addmanuallightdevice #lighting3params").hide();
@@ -1926,6 +1937,12 @@ define(['app'], function (app) {
 				}
 				else {
 					$("#dialog-addmanuallightdevice #lighting2paramsUnitCode").show();
+					if (lighttype == 55) {
+						$('#dialog-addmanuallightdevice #lightparams2 #combounitcode >option').remove();
+						for (ii = 1; ii < totunits + 1; ii++) {
+							$('#dialog-addmanuallightdevice #lightparams2 #combounitcode').append($('<option></option>').val(ii).html(ii));
+						}
+					}
 				}
 				$("#dialog-addmanuallightdevice #lighting2params #combocmd2").show();
 				if (bIsType5 == 0) {
@@ -1935,7 +1952,8 @@ define(['app'], function (app) {
 					$("#dialog-addmanuallightdevice #lighting2params #combocmd1").hide();
 					if ((lighttype == 55) || (lighttype == 57) || (lighttype == 65) || (lighttype == 100)) {
 						$("#dialog-addmanuallightdevice #lighting2params #combocmd2").hide();
-						if ((lighttype != 65) && (lighttype != 100)) {
+						$("#dialog-addmanuallightdevice #lighting2params #combocmd2").val(0);
+						if ((lighttype != 55) && (lighttype != 65) && (lighttype != 100)) {
 							$("#dialog-addmanuallightdevice #lighting2paramsUnitCode").hide();
 						}
 					}
@@ -2036,8 +2054,8 @@ define(['app'], function (app) {
 					$("#dialog-addmanuallightdevice #fanparams #combocmd3 option:selected").text();
 				mParams += "&id=" + ID;
 			}
-			else if ((lighttype == 305)||(lighttype == 306)) {
-				//Fan (Lucci Air)
+			else if ((lighttype == 305)||(lighttype == 306)||(lighttype == 307)) {
+				//Fan (Lucci Air/Westinghouse)
 				ID =
 					$("#dialog-addmanuallightdevice #fanparams #combocmd1 option:selected").text() +
 					$("#dialog-addmanuallightdevice #fanparams #combocmd2 option:selected").text() +
@@ -2127,7 +2145,7 @@ define(['app'], function (app) {
 						$("#dialog-addmanuallightdevice #lightparams2 #combocmd4 option:selected").text();
 				}
 				else {
-					if ((lighttype != 55) && (lighttype != 57) && (lighttype != 100)) {
+					if ((lighttype != 57) && (lighttype != 100)) {
 						ID =
 							$("#dialog-addmanuallightdevice #lightparams2 #combocmd2 option:selected").text() +
 							$("#dialog-addmanuallightdevice #lightparams2 #combocmd3 option:selected").text() +
@@ -2358,6 +2376,7 @@ define(['app'], function (app) {
 
 			ShowLights();
 		};
+
 		$scope.$on('$destroy', function () {
 			if (typeof $scope.mytimer != 'undefined') {
 				$interval.cancel($scope.mytimer);
@@ -2373,5 +2392,5 @@ define(['app'], function (app) {
 				popup.hide();
 			}
 		});
-	}]);
+	});
 });

@@ -6,6 +6,7 @@
 #ifdef ENABLE_PYTHON
 
 #include <tinyxml.h>
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 #include "PluginManager.h"
@@ -72,7 +73,7 @@ namespace Plugins {
 	std::map<int, CDomoticzHardwareBase*>	CPluginSystem::m_pPlugins;
 	std::map<std::string, std::string>		CPluginSystem::m_PluginXml;
 
-	CPluginSystem::CPluginSystem() : m_stoprequested(false)
+	CPluginSystem::CPluginSystem()
 	{
 		m_bEnabled = false;
 		m_bAllPluginsStarted = false;
@@ -157,6 +158,61 @@ namespace Plugins {
 		}
 
 		return true;
+	}
+
+	bool CPluginSystem::StopPluginSystem()
+	{
+		m_bAllPluginsStarted = false;
+
+		if (m_thread)
+		{
+			RequestStop();
+			m_thread->join();
+			m_thread.reset();
+		}
+
+		// Hardware should already be stopped so just flush the queue (should already be empty)
+		std::lock_guard<std::mutex> l(PluginMutex);
+		while (!PluginMessageQueue.empty())
+		{
+			CPluginMessageBase* Message = PluginMessageQueue.front();
+			const CPlugin* pPlugin = Message->Plugin();
+			if (pPlugin)
+			{
+				_log.Log(LOG_NORM, "(" + pPlugin->m_Name + ") ' flushing " + std::string(Message->Name()) + "' queue entry");
+			}
+			PluginMessageQueue.pop();
+		}
+
+		m_pPlugins.clear();
+
+		if (Py_LoadLibrary() && m_InitialPythonThread)
+		{
+			if (Py_IsInitialized()) {
+				PyEval_RestoreThread((PyThreadState*)m_InitialPythonThread);
+				Py_Finalize();
+			}
+		}
+
+		_log.Log(LOG_STATUS, "PluginSystem: Stopped.");
+		return true;
+	}
+
+	void CPluginSystem::LoadSettings()
+	{
+		//	Add command to message queue for every plugin
+		for (std::map<int, CDomoticzHardwareBase*>::iterator itt = m_pPlugins.begin(); itt != m_pPlugins.end(); ++itt)
+		{
+			if (itt->second)
+			{
+				CPlugin*	pPlugin = reinterpret_cast<CPlugin*>(itt->second);
+				pPlugin->MessagePlugin(new SettingsDirective(pPlugin));
+			}
+			else
+			{
+				_log.Log(LOG_ERROR, "%s: NULL entry found in Plugins map for Hardware %d.", __func__, itt->first);
+			}
+		}
 	}
 
 	void CPluginSystem::BuildManifest()
@@ -249,6 +305,12 @@ namespace Plugins {
 		}
 	}
 
+	void BoostWorkers()
+	{
+		
+		ios.run();
+	}
+
 	void CPluginSystem::Do_Work()
 	{
 		while (!m_bAllPluginsStarted)
@@ -259,13 +321,17 @@ namespace Plugins {
 		_log.Log(LOG_STATUS, "PluginSystem: Entering work loop.");
 
 		// Create initial IO Service thread
-		ios.reset();
+		ios.restart();
 		// Create some work to keep IO Service alive
 		auto work = boost::asio::io_service::work(ios);
-		boost::thread bt(boost::bind(&boost::asio::io_service::run, &ios));
-		SetThreadName(bt.native_handle(), "PluginMgr_IO");
+		boost::thread_group BoostThreads;
+		for (int i = 0; i < 1; i++)
+		{
+			boost::thread*	bt = BoostThreads.create_thread(BoostWorkers);
+			SetThreadName(bt->native_handle(), "Plugin_ASIO");
+		}
 
-		while (!m_stoprequested)
+		while (!IsStopRequested(50))
 		{
 			time_t	Now = time(0);
 			bool	bProcessed = true;
@@ -319,65 +385,13 @@ namespace Plugins {
 					pPlugin->ReleaseThread();
 				}
 			}
-			sleep_milliseconds(50);
 		}
+
+		// Shutdown IO workers
+		ios.stop();
+		BoostThreads.join_all();
 
 		_log.Log(LOG_STATUS, "PluginSystem: Exiting work loop.");
-	}
-
-	bool CPluginSystem::StopPluginSystem()
-	{
-		m_bAllPluginsStarted = false;
-
-		if (m_thread)
-		{
-			m_stoprequested = true;
-			m_thread->join();
-			m_thread.reset();
-		}
-
-		// Hardware should already be stopped so just flush the queue (should already be empty)
-		std::lock_guard<std::mutex> l(PluginMutex);
-		while (!PluginMessageQueue.empty())
-		{
-			CPluginMessageBase* Message = PluginMessageQueue.front();
-			const CPlugin* pPlugin = Message->Plugin();
-			if (pPlugin)
-			{
-				_log.Log(LOG_NORM, "(" + pPlugin->m_Name + ") ' flushing " + std::string(Message->Name()) + "' queue entry");
-			}
-			PluginMessageQueue.pop();
-		}
-
-		m_pPlugins.clear();
-
-		if (Py_LoadLibrary()  && m_InitialPythonThread)
-		{
-			if (Py_IsInitialized()) {
-				PyEval_RestoreThread((PyThreadState*)m_InitialPythonThread);
-				Py_Finalize();
-			}
-		}
-
-		_log.Log(LOG_STATUS, "PluginSystem: Stopped.");
-		return true;
-	}
-
-	void CPluginSystem::LoadSettings()
-	{
-		//	Add command to message queue for every plugin
-		for (std::map<int, CDomoticzHardwareBase*>::iterator itt = m_pPlugins.begin(); itt != m_pPlugins.end(); ++itt)
-		{
-			if (itt->second)
-			{
-				CPlugin*	pPlugin = reinterpret_cast<CPlugin*>(itt->second);
-				pPlugin->MessagePlugin(new SettingsDirective(pPlugin));
-			}
-			else
-			{
-				_log.Log(LOG_ERROR, "%s: NULL entry found in Plugins map for Hardware %d.", __func__, itt->first);
-			}
-		}
 	}
 
 	void CPluginSystem::DeviceModified(uint64_t ID)

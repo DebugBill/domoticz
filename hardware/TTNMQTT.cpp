@@ -9,6 +9,7 @@
 #include "../json/json.h"
 #include "../webserver/Base64.h"
 #include "cayenne_lpp/CayenneLPP_Dec.h"
+#include <sstream>
 
 #define RETRY_DELAY 30
 
@@ -62,7 +63,6 @@ CTTNMQTT::CTTNMQTT(const int ID, const std::string &IPAddress, const unsigned sh
 	m_IsConnected = false;
 	m_bDoReconnect = false;
 
-	m_stoprequested = false;
 	m_usIPPort = usIPPort;
 	m_TopicIn = Username + "/devices/+/up";
 
@@ -85,9 +85,9 @@ CTTNMQTT::~CTTNMQTT(void)
 
 bool CTTNMQTT::StartHardware()
 {
-	StartHeartbeatThread();
+	RequestStart();
 
-	m_stoprequested = false;
+	StartHeartbeatThread();
 
 	//force connect the next first time
 	m_IsConnected = false;
@@ -96,7 +96,7 @@ bool CTTNMQTT::StartHardware()
 
 	//Start worker thread
 	m_thread = std::make_shared<std::thread>(&CTTNMQTT::Do_Work, this);
-	SetThreadName(m_thread->native_handle(), "TTN_MQTT");
+	SetThreadNameInt(m_thread->native_handle());
 	return (m_thread != nullptr);
 }
 
@@ -109,17 +109,11 @@ void CTTNMQTT::StopMQTT()
 bool CTTNMQTT::StopHardware()
 {
 	StopHeartbeatThread();
-	m_stoprequested = true;
-	try {
-		if (m_thread)
-		{
-			m_thread->join();
-			m_thread.reset();
-		}
-	}
-	catch (...)
+	if (m_thread)
 	{
-		//Don't throw from a Stop command
+		RequestStop();
+		m_thread->join();
+		m_thread.reset();
 	}
 	m_IsConnected = false;
 	return true;
@@ -161,7 +155,7 @@ void CTTNMQTT::on_disconnect(int rc)
 {
 	if (rc != 0)
 	{
-		if (!m_stoprequested)
+		if (!IsStopRequested(0))
 		{
 			if (rc == 5)
 			{
@@ -221,16 +215,15 @@ void CTTNMQTT::Do_Work()
 	int msec_counter = 0;
 	int sec_counter = 0;
 
-	while (!m_stoprequested)
+	while (!IsStopRequested(100))
 	{
-		sleep_milliseconds(100);
 		if (!bFirstTime)
 		{
 			int rc = loop();
 			if (rc) {
 				if (rc != MOSQ_ERR_NO_CONN)
 				{
-					if (!m_stoprequested)
+					if (!IsStopRequested(0))
 					{
 						if (!m_bDoReconnect)
 						{
@@ -331,6 +324,32 @@ void CTTNMQTT::FlagSensorWithChannelUsed(Json::Value &root, const std::string &s
 			return;
 		}
 	}
+}
+
+void CTTNMQTT::UpdateUserVariable(const std::string &varName, const std::string &varValue)
+{
+	std::string szLastUpdate = TimeToString(NULL, TF_DateTime);
+
+	int ID;
+
+	std::vector<std::vector<std::string> > result;
+	result = m_sql.safe_query("SELECT ID FROM UserVariables WHERE (Name=='%q')", varName.c_str());
+	if (result.empty())
+	{
+		m_sql.safe_query("INSERT INTO UserVariables (Name, ValueType, Value) VALUES ('%q',%d,'%q')", varName.c_str(), USERVARTYPE_STRING, varValue.c_str());
+		result = m_sql.safe_query("SELECT ID FROM UserVariables WHERE (Name=='%q')", varName.c_str());
+		if (result.empty())
+			return;
+		ID = atoi(result[0][0].c_str());
+	}
+	else
+	{
+		ID = atoi(result[0][0].c_str());
+		m_sql.safe_query("UPDATE UserVariables SET Value='%q', LastUpdate='%q' WHERE (ID==%d)", varValue.c_str(), szLastUpdate.c_str(), ID);
+	}
+
+	m_mainworker.m_eventsystem.SetEventTrigger(ID, m_mainworker.m_eventsystem.REASON_USERVARIABLE, 0);
+	m_mainworker.m_eventsystem.UpdateUserVariable(ID, varValue, szLastUpdate);
 }
 
 
@@ -485,10 +504,13 @@ void CTTNMQTT::on_message(const struct mosquitto_message *message)
 			}
 			else if (type == "gps")
 			{
-				//Not handled yet
-				_log.Log(LOG_STATUS, "TTN_MQTT: GPS not implemented yet!");
 				float height = (*itt)["alt"].asFloat();
 				SendPercentageSensor(DeviceID, 1, BatteryLevel, height, DeviceName + " Altitude");
+
+				std::stringstream sstr;
+				sstr << (*itt)["lat"].asFloat() << "," << (*itt)["lon"].asFloat() << "," << (*itt)["alt"].asFloat();
+
+				UpdateUserVariable(DeviceName, sstr.str());
 			}
 			else if ((type == "digital_input") || (type == "digital_output"))
 			{
