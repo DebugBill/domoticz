@@ -1,8 +1,8 @@
 #pragma once
 
-#include <map>
 #include <boost/asio.hpp>
 #include <boost/function.hpp>
+#include <boost/thread.hpp>
 #include "server.hpp"
 #include "session_store.hpp"
 
@@ -30,8 +30,8 @@ namespace http {
 			unsigned long ID;
 			std::string Username;
 			std::string Password;
-
 			_eUserRights userrights;
+			int TotSensors;
 			int ActiveTabs;
 		} WebUserPassword;
 
@@ -117,9 +117,7 @@ namespace http {
 		public:
 			/// Construct with a directory containing files to be served.
 			cWebemRequestHandler( const std::string& doc_root, cWebem* webem ) :
-				request_handler( doc_root, webem ),
-				m_doc_root ( doc_root ),
-				myWebem(webem)
+				request_handler( doc_root, webem )
 				{}
 
 			/// Handle a request and produce a reply.
@@ -127,6 +125,9 @@ namespace http {
 		private:
 			char *strftime_t(const char *format, const time_t rawtime);
 			bool CompressWebOutput(const request& req, reply& rep);
+			/// Websocket methods
+			bool is_upgrade_request(WebEmSession & session, const request& req, reply& rep);
+			std::string compute_accept_header(const std::string &websocket_key);
 			bool CheckAuthentication(WebEmSession & session, const request& req, reply& rep);
 			void send_authorization_request(reply& rep);
 			void send_remove_cookie(reply& rep);
@@ -139,10 +140,7 @@ namespace http {
 			std::string generateAuthToken(const WebEmSession & session, const request & req);
 			bool checkAuthToken(WebEmSession & session);
 			void removeAuthToken(const std::string & sessionId);
-			std::string m_doc_root;
-			// Webem link to application code
-			cWebem* myWebem;
-		};
+	};
 		// forward declaration for friend declaration
 		class CProxyClient;
 		/**
@@ -164,7 +162,7 @@ namespace http {
 			void RegisterIncludeCode(
 				const char* idname,
 				webem_include_function fun );
-			
+
 			void RegisterIncludeCodeW(
 				const char* idname,
 				webem_include_function_w fun );
@@ -196,15 +194,15 @@ namespace http {
 			void AddUserPassword(const unsigned long ID, const std::string &username, const std::string &password, const _eUserRights userrights, const int activetabs);
 			std::string ExtractRequestPath(const std::string& original_request_path);
 			bool IsBadRequestPath(const std::string& original_request_path);
-			
+
 			void ClearUserPasswords();
 			std::vector<_tWebUserPassword> m_userpasswords;
 			void AddLocalNetworks(std::string network);
 			void ClearLocalNetworks();
 			std::vector<_tIPNetwork> m_localnetworks;
-			void SetDigistRealm(std::string realm);
+			void SetDigistRealm(const std::string &realm);
 			std::string m_DigistRealm;
-			void SetZipPassword(std::string password);
+			void SetZipPassword(const std::string &password);
 
 			//IPs that are allowed to pass proxy headers
 			std::vector < std::string > myRemoteProxyIPs;
@@ -225,15 +223,13 @@ namespace http {
 			_eAuthenticationMethod m_authmethod;
 			//Whitelist url strings that bypass authentication checks (not used by basic-auth authentication)
 			std::vector < std::string > myWhitelistURLs;
+			std::map<std::string, WebEmSession> m_sessions;
 			server_settings m_settings;
-<<<<<<< HEAD
-=======
 			// actual theme selected
 			std::string m_actTheme;
 
 			void SetWebCompressionMode(const _eWebCompressionMode gzmode);
 			_eWebCompressionMode m_gzipmode;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		private:
 			/// store map between include codes and application functions
 			std::map < std::string, webem_include_function > myIncludes;
@@ -245,25 +241,21 @@ namespace http {
 			std::map < std::string, webem_page_function > myPages;
 			/// store map between pages and application functions
 			std::map < std::string, webem_page_function > myPages_w;
-			/// boost::asio web server (RK: plain or secure)
-			boost::shared_ptr<server_base> myServer;
-			// actual theme selected
-			std::string m_actTheme;
-			// root of url for reverse proxy servers
-			std::string m_webRoot;
-			/// request handler specialized to handle webem requests
-			cWebemRequestHandler myRequestHandler;
-			/// sessions management
-			std::map<std::string,WebEmSession> m_sessions;
-			boost::mutex m_sessionsMutex;
-			boost::asio::io_service m_io_service;
-			boost::asio::deadline_timer m_session_clean_timer;
-			boost::thread m_io_service_thread;
 			void CleanSessions();
 			session_store_impl_ptr mySessionStore; /// session store
+			/// request handler specialized to handle webem requests
+			/// Rene: Beware: myRequestHandler should be declared BEFORE myServer
+			cWebemRequestHandler myRequestHandler;
+			/// boost::asio web server (RK: plain or secure)
+			std::shared_ptr<server_base> myServer;
+			// root of url for reverse proxy servers
+			std::string m_webRoot;
+			/// sessions management
+			std::mutex m_sessionsMutex;
+			boost::asio::io_service m_io_service;
+			boost::asio::deadline_timer m_session_clean_timer;
+			std::shared_ptr<std::thread> m_io_service_thread;
 		};
 
 	}
 }
-
-

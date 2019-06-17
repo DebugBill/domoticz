@@ -7,7 +7,7 @@
 
 enum _eSwitchType
 {
-	STYPE_OnOff=0,					//0
+	STYPE_OnOff = 0,					//0
 	STYPE_Doorbell,					//1
 	STYPE_Contact,					//2
 	STYPE_Blinds,					//3
@@ -33,7 +33,7 @@ enum _eSwitchType
 
 enum _eMeterType
 {
-	MTYPE_ENERGY=0,			//0
+	MTYPE_ENERGY = 0,			//0
 	MTYPE_GAS,				//1
 	MTYPE_WATER,			//2
 	MTYPE_COUNTER,			//3
@@ -44,7 +44,7 @@ enum _eMeterType
 
 enum _eTimerType
 {
-	TTYPE_BEFORESUNRISE=0,
+	TTYPE_BEFORESUNRISE = 0,
 	TTYPE_AFTERSUNRISE,
 	TTYPE_ONTIME,
 	TTYPE_BEFORESUNSET,
@@ -58,12 +58,26 @@ enum _eTimerType
 	TTYPE_MONTHLY_WD,
 	TTYPE_YEARLY,
 	TTYPE_YEARLY_WD,
+	TTYPE_BEFORESUNATSOUTH,
+	TTYPE_AFTERSUNATSOUTH,
+	TTYPE_BEFORECIVTWSTART,
+	TTYPE_AFTERCIVTWSTART,
+	TTYPE_BEFORECIVTWEND,
+	TTYPE_AFTERCIVTWEND,
+	TTYPE_BEFORENAUTTWSTART,
+	TTYPE_AFTERNAUTTWSTART,
+	TTYPE_BEFORENAUTTWEND,
+	TTYPE_AFTERNAUTTWEND,
+	TTYPE_BEFOREASTTWSTART,
+	TTYPE_AFTERASTTWSTART,
+	TTYPE_BEFOREASTTWEND,
+	TTYPE_AFTERASTTWEND,
 	TTYPE_END
 };
 
 enum _eTimerCommand
 {
-	TCMD_ON=0,
+	TCMD_ON = 0,
 	TCMD_OFF
 };
 
@@ -78,11 +92,12 @@ enum _eMediaStatus
 	MSTAT_PHOTO,
 	MSTAT_PLAYING,
 	MSTAT_DISCONNECTED,
+	MSTAT_SLEEPING,
 	MSTAT_UNKNOWN
 };
 
 enum _eHardwareTypes {
-	HTYPE_RFXtrx315=0,			//0
+	HTYPE_RFXtrx315 = 0,		//0
 	HTYPE_RFXtrx433,			//1
 	HTYPE_RFXLAN,				//2
 	HTYPE_Domoticz,				//3
@@ -91,7 +106,7 @@ enum _eHardwareTypes {
 	HTYPE_YouLess,				//6
 	HTYPE_TE923,				//7
 	HTYPE_Rego6XX,				//8
-	HTYPE_RazberryZWave,		//9
+	HTYPE_TTN_MQTT,				//9
 	HTYPE_DavisVantage,			//10
 	HTYPE_VOLCRAFTCO20,			//11
 	HTYPE_1WIRE,				//12
@@ -157,10 +172,10 @@ enum _eHardwareTypes {
 	HTYPE_AtagOne,				//72
 	HTYPE_Sterbox,				//73
 	HTYPE_HTTPPOLLER,			//74
-	HTYPE_EVOHOME_WEB,	//75
+	HTYPE_EVOHOME_WEB,			//75
 	HTYPE_RAVEn,	    		//76
 	HTYPE_S0SmartMeterTCP,		//77
-	HTYPE_DenkoviSmartdenLan,	//78
+	HTYPE_RESERVED_FOR_YOU_1,	//78
 	HTYPE_AccuWeather,			//79
 	HTYPE_Comm5Serial,          //80
 	HTYPE_Ec3kMeterTCP,			//81
@@ -185,11 +200,9 @@ enum _eHardwareTypes {
 	HTYPE_RelayNet,				//100
 	HTYPE_KMTronicUDP,			//101
 	HTYPE_SysfsGpio,			//102
-	HTYPE_Rtl433,                           //103
+	HTYPE_Rtl433,				//103
 	HTYPE_OnkyoAVTCP,			//104
-<<<<<<< HEAD
-=======
-	HTYPE_DenkoviSmartdenIPInOut,	//105
+	HTYPE_RESERVED_FOR_YOU_2,	//105
 	HTYPE_EVOHOME_TCP,			//106
 	HTYPE_USBtinGateway,		//107
 	HTYPE_EnphaseAPI,			//108
@@ -200,14 +213,15 @@ enum _eHardwareTypes {
 	HTYPE_EcoCompteur,			//113
 	HTYPE_Honeywell,			//114
 	HTYPE_Tado,					//115
-	HTYPE_DenkoviDevices,		//116
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
+	HTYPE_DenkoviHTTPDevices,		//116
+	HTYPE_DenkoviUSBDevices,	//117
+	HTYPE_DenkoviTCPDevices,	//118
 	HTYPE_END
 };
 
 enum _eNotificationTypes
 {
-	NTYPE_TEMPERATURE=0,
+	NTYPE_TEMPERATURE = 0,
 	NTYPE_HUMIDITY,
 	NTYPE_RAIN,
 	NTYPE_UV,
@@ -235,7 +249,8 @@ enum _eNotificationTypes
 	NTYPE_STOPPED,
 	NTYPE_PLAYING,
 	NTYPE_VALUE,
-	NTYPE_LASTUPDATE
+	NTYPE_LASTUPDATE,
+	NTYPE_SLEEPING
 };
 
 const char *RFX_Type_Desc(const unsigned char i, const unsigned char snum);
@@ -250,6 +265,7 @@ const char *BMP_Forecast_Desc(const unsigned char Forecast);
 const char *Timer_Type_Desc(const int tType);
 const char *Timer_Cmd_Desc(const int tCmd);
 const char *Hardware_Type_Desc(int hType);
+const char *Hardware_Short_Desc(int hType);
 const char *Security_Status_Desc(const unsigned char status);
 const char *Notification_Type_Desc(const int nType, const unsigned char snum);
 const char *Notification_Type_Label(const int nType);
@@ -284,7 +300,7 @@ bool GetLightCommand(
 	std::string switchcmd,
 	unsigned char &cmd,
 	const std::map<std::string, std::string> & options
-	);
+);
 
 bool IsLightSwitchOn(const std::string &lstatus);
 

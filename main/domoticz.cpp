@@ -31,6 +31,7 @@
 #include "../notifications/NotificationHelper.h"
 #include "appversion.h"
 #include "localtime_r.h"
+#include "SignalHandler.h"
 
 #if defined WIN32
 	#include "../msbuild/WindowsHelper.h"
@@ -44,45 +45,6 @@
 	#include <string.h> 
 #endif
 
-#ifdef HAVE_EXECINFO_H
-#include <execinfo.h>
-static void dumpstack(void) {
-	// Notes :
-	// The following code does needs -rdynamic compile option.not print full backtrace.
-	// To have a full backtrace you need to :
-	// - compile with -g -rdynamic options
-	// - active core dump using "ulimit -c unlimited" before starting daemon
-	// - use gdb to analyze the core dump
-	void *addrs[128];
-	int n, count = backtrace(addrs, 128);
-	char** symbols = backtrace_symbols(addrs, count);
-
-	if (symbols) {
-		for (n = 0; n < count; n++) {
-			_log.Log(LOG_ERROR, "  %s", symbols[n]);
-		}
-		free(symbols);
-	}
-}
-#else
-static void dumpstack(void) {
-}
-#endif
-
-<<<<<<< HEAD
-const char *szHelp=
-	"Usage: Domoticz -www port -verbose x\n"
-	"\t-www port (for example -www 8080, or -www 0 to disable http)\n"
-	"\t-wwwbind address (for example -wwwbind 0.0.0.0 or -wwwbind 192.168.0.20)\n"
-#ifdef WWW_ENABLE_SSL
-	"\t-sslwww port (for example -sslwww 443, or -sslwww 0 to disable https)\n"
-	"\t-sslcert file_path (for example /opt/domoticz/server_cert.pem)\n"
-	"\t-sslkey file_path (if different from certificate file)\n"
-	"\t-sslpass passphrase (to access to server private key in certificate)\n"
-	"\t-sslmethod method (for SSL method)\n"
-	"\t-ssloptions options (for SSL options, default is 'default_workarounds,no_sslv2,no_sslv3,no_tlsv1,no_tlsv1_1,single_dh_use')\n"
-	"\t-ssldhparam file_path (for SSL DH parameters)\n"
-=======
 const char *szHelp =
 "Usage: Domoticz -www port\n"
 "\t-version display version number\n"
@@ -96,50 +58,34 @@ const char *szHelp =
 "\t-sslmethod method (supported methods: tlsv1, tlsv1_server, sslv23, sslv23_server, tlsv11, tlsv11_server, tlsv12, tlsv12_server)\n"
 "\t-ssloptions options (for SSL options, default is 'default_workarounds,no_sslv2,no_sslv3,no_tlsv1,no_tlsv1_1,single_dh_use')\n"
 "\t-ssldhparam file_path (for SSL DH parameters)\n"
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 #endif
 #if defined WIN32
-	"\t-wwwroot file_path (for example D:\\www)\n"
-	"\t-dbase file_path (for example D:\\domoticz.db)\n"
-	"\t-userdata file_path (for example D:\\domoticzdata)\n"
+"\t-wwwroot file_path (for example D:\\www)\n"
+"\t-dbase file_path (for example D:\\domoticz.db)\n"
+"\t-userdata file_path (for example D:\\domoticzdata)\n"
 #else
-	"\t-wwwroot file_path (for example /opt/domoticz/www)\n"
-	"\t-dbase file_path (for example /opt/domoticz/domoticz.db)\n"
-	"\t-userdata file_path (for example /opt/domoticz)\n"
+"\t-wwwroot file_path (for example /opt/domoticz/www)\n"
+"\t-dbase file_path (for example /opt/domoticz/domoticz.db)\n"
+"\t-userdata file_path (for example /opt/domoticz)\n"
 #endif
-<<<<<<< HEAD
-	"\t-webroot additional web root, useful with proxy servers (for example domoticz)\n"
-	"\t-verbose x (where x=0 is none, x=1 is all important, x=2 is debug)\n"
-	"\t-startupdelay seconds (default=0)\n"
-	"\t-nowwwpwd (in case you forgot the web server username/password)\n"
-	"\t-nocache (do not return appcache, use only when developing the web pages)\n"
-=======
 "\t-webroot additional web root, useful with proxy servers (for example domoticz)\n"
 "\t-startupdelay seconds (default=0)\n"
 "\t-nowwwpwd (in case you forgot the web server username/password)\n"
 "\t-nocache (do not return appcache, use only when developing the web pages)\n"
 "\t-wwwcompress mode (on = always compress [default], off = always decompress, static = no processing but try precompressed first)\n"
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 #if defined WIN32
-	"\t-nobrowser (do not start web browser (Windows Only)\n"
+"\t-nobrowser (do not start web browser (Windows Only)\n"
 #endif
 "\t-noupdates do not use the internal update functionality\n"
 #if defined WIN32
-	"\t-log file_path (for example D:\\domoticz.log)\n"
+"\t-log file_path (for example D:\\domoticz.log)\n"
 #else
-	"\t-log file_path (for example /var/log/domoticz.log)\n"
+"\t-log file_path (for example /var/log/domoticz.log)\n"
 #endif
-<<<<<<< HEAD
-	"\t-loglevel (0=All, 1=Status+Error, 2=Error , 3= Trace )\n"
-	"\t-debug    allow log trace level 3 \n"
-	"\t-notimestamps (do not prepend timestamps to logs; useful with syslog, etc.)\n"
-	"\t-php_cgi_path (for example /usr/bin/php-cgi)\n"
-=======
 "\t-loglevel (combination of: normal,status,error,debug)\n"
 "\t-debuglevel (combination of: normal,hardware,received,webserver,eventsystem,python,thread_id)\n"
 "\t-notimestamps (do not prepend timestamps to logs; useful with syslog, etc.)\n"
 "\t-php_cgi_path (for example /usr/bin/php-cgi)\n"
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 #ifndef WIN32
 "\t-daemon (run as background daemon)\n"
 "\t-pidfile pid file location (for example /var/run/domoticz.pid)\n"
@@ -203,13 +149,15 @@ bool g_bStopApplication = false;
 bool g_bUseSyslog = false;
 bool g_bRunAsDaemon = false;
 bool g_bDontCacheWWW = false;
-_eWebCompressionMode g_wwwCompressMode = http::server::WWW_USE_GZIP;
+http::server::_eWebCompressionMode g_wwwCompressMode = http::server::WWW_USE_GZIP;
 bool g_bUseUpdater = true;
 http::server::server_settings webserver_settings;
 #ifdef WWW_ENABLE_SSL
 http::server::ssl_server_settings secure_webserver_settings;
 #endif
 bool bStartWebBrowser = true;
+bool g_bUseWatchdog = true;
+bool g_bIsWSL = false;
 
 #define DAEMON_NAME "domoticz"
 #define PID_FILE "/var/run/domoticz.pid" 
@@ -217,44 +165,6 @@ bool bStartWebBrowser = true;
 std::string daemonname = DAEMON_NAME;
 std::string pidfile = PID_FILE;
 int pidFilehandle = 0;
-
-int fatal_handling = 0;
-
-void signal_handler(int sig_num)
-{
-	switch(sig_num)
-	{
-#ifndef WIN32
-	case SIGHUP:
-		if (!logfile.empty())
-			_log.SetOutputFile(logfile.c_str());
-		break;
-#endif
-	case SIGINT:
-	case SIGTERM:
-#ifndef WIN32
-		if ((g_bRunAsDaemon)||(g_bUseSyslog))
-			syslog(LOG_INFO, "Domoticz is exiting...");
-#endif
-		g_bStopApplication = true;
-		break;
-	case SIGSEGV:
-	case SIGILL:
-	case SIGABRT:
-	case SIGFPE:
-		if (fatal_handling) {
-			_log.Log(LOG_ERROR, "Domoticz received fatal signal %d while backtracing !...", sig_num);
-			exit(EXIT_FAILURE);
-		}
-		fatal_handling = 1;
-		_log.Log(LOG_ERROR, "Domoticz received fatal signal %d !...", sig_num);
-		dumpstack();
-		// re-raise signal to enforce core dump
-		signal(sig_num, SIG_DFL);
-		raise(sig_num);
-		break;
-	} 
-}
 
 #ifndef WIN32
 void daemonShutdown()
@@ -281,9 +191,9 @@ void daemonize(const char *rundir, const char *pidfile)
 	sigprocmask(SIG_BLOCK, &newSigSet, NULL);   /* Block the above specified signals */
 
 	/* Set up a signal handler */
-	newSigAction.sa_handler = signal_handler;
+	newSigAction.sa_sigaction = signal_handler;
 	sigemptyset(&newSigAction.sa_mask);
-	newSigAction.sa_flags = 0;
+	newSigAction.sa_flags = SA_SIGINFO;
 
 	/* Signals to handle */
 	sigaction(SIGTERM, &newSigAction, NULL);    // catch term signal
@@ -291,6 +201,7 @@ void daemonize(const char *rundir, const char *pidfile)
 	sigaction(SIGSEGV, &newSigAction, NULL);    // catch segmentation fault signal
 	sigaction(SIGABRT, &newSigAction, NULL);    // catch abnormal termination signal
 	sigaction(SIGILL,  &newSigAction, NULL);    // catch invalid program image
+	sigaction(SIGUSR1, &newSigAction, NULL);    // catch SIGUSR1 (used by watchdog)
 #ifndef WIN32
 	sigaction(SIGHUP,  &newSigAction, NULL);    // catch HUP, for log rotation
 #endif
@@ -303,7 +214,10 @@ void daemonize(const char *rundir, const char *pidfile)
 		/* Could not fork */
 		exit(EXIT_FAILURE);
 	}
-
+    
+    /* call srand once for the entire app */
+    std::srand((unsigned int)std::time(nullptr));
+    
 	if (pid > 0)
 	{
 		/* Child created ok, so exit parent process */
@@ -546,120 +460,6 @@ void GetAppVersion()
 	szAppDate = szTmp;
 }
 
-<<<<<<< HEAD
-#if defined WIN32
-int WINAPI WinMain(_In_ HINSTANCE hInstance,_In_opt_ HINSTANCE hPrevInstance,_In_ LPSTR lpCmdLine,_In_ int nShowCmd)
-#else
-int main(int argc, char**argv)
-#endif
-{
-#if defined WIN32
-#ifndef _DEBUG
-	CreateMutexA(0, FALSE, "Local\\Domoticz"); 
-	if(GetLastError() == ERROR_ALREADY_EXISTS) { 
-		MessageBox(HWND_DESKTOP,"Another instance of Domoticz is already running!","Domoticz",MB_OK);
-		return 1; 
-	}
-#endif //_DEBUG
-	bool bStartWebBrowser = true;
-	RedirectIOToConsole();
-#endif //WIN32
-
-	szStartupFolder = "";
-	szWWWFolder = "";
-	szWebRoot = "";
-	
-	CCmdLine cmdLine;
-
-	// parse argc,argv 
-#if defined WIN32
-	cmdLine.SplitLine(__argc, __argv);
-#else
-	cmdLine.SplitLine(argc, argv);
-	//ignore pipe errors
-	signal(SIGPIPE, SIG_IGN);
-#endif
-
-	if (cmdLine.HasSwitch("-log"))
-	{
-		if (cmdLine.GetArgumentCount("-log") != 1)
-		{
-			_log.Log(LOG_ERROR, "Please specify an output log file");
-			return 1;
-		}
-	}
-	if (cmdLine.HasSwitch("-loglevel"))
-	{
-		if (cmdLine.GetArgumentCount("-loglevel") != 1)
-		{
-			_log.Log(LOG_ERROR, "Please specify logfile output level (0=All, 1=Status+Error, 2=Error)");
-			return 1;
-		}
-	}
-	if (cmdLine.HasSwitch("-verbose"))
-	{
-		if (cmdLine.GetArgumentCount("-verbose") != 1)
-		{
-			_log.Log(LOG_ERROR, "Please specify a verbose level");
-			return 1;
-		}
-	}
-	if (cmdLine.HasSwitch("-debug"))
-		_log.SetLogDebug(true);
-	else
-		_log.SetLogDebug(false);
-	if (cmdLine.HasSwitch("-notimestamps"))
-	{
-		_log.EnableLogTimestamps(false);
-	}
-
-	if (cmdLine.HasSwitch("-approot"))
-	{
-		if (cmdLine.GetArgumentCount("-approot") != 1)
-		{
-			_log.Log(LOG_ERROR, "Please specify a APP root path");
-			return 1;
-		}
-		std::string szroot = cmdLine.GetSafeArgument("-approot", 0, "");
-		if (szroot.size() != 0)
-			szStartupFolder = szroot;
-	}
-
-	if (szStartupFolder == "")
-	{
-#if !defined WIN32
-		char szStartupPath[255];
-		getExecutablePathName((char*)&szStartupPath,255);
-		szStartupFolder=szStartupPath;
-		if (szStartupFolder.find_last_of('/')!=std::string::npos)
-			szStartupFolder=szStartupFolder.substr(0,szStartupFolder.find_last_of('/')+1);
-#else
-#ifndef _DEBUG
-		char szStartupPath[255];
-		char * p;
-		GetModuleFileName(NULL, szStartupPath, sizeof(szStartupPath));
-		p = szStartupPath + strlen(szStartupPath);
-
-		while (p >= szStartupPath && *p != '\\')
-			p--;
-
-		if (++p >= szStartupPath)
-			*p = 0;
-		szStartupFolder=szStartupPath;
-		size_t start_pos = szStartupFolder.find("\\Release\\");
-		if(start_pos != std::string::npos) {
-			szStartupFolder.replace(start_pos, 9, "\\domoticz\\");
-			_log.Log(LOG_STATUS,"%s",szStartupFolder.c_str());
-		}
-#endif
-#endif
-	}
-	GetAppVersion();
-	_log.Log(LOG_STATUS, "Domoticz V%s (c)2012-%d GizMoCuz", szAppVersion.c_str(), ActYear);
-	_log.Log(LOG_STATUS, "Build Hash: %s, Date: %s", szAppHash.c_str(), szAppDate.c_str());
-
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 #if !defined WIN32
 void CheckForOnboardSensors()
 {
@@ -716,6 +516,18 @@ void CheckForOnboardSensors()
 		szInternalCurrentCommand = "cat /sys/class/power_supply/ac/current_now | awk '{ printf (\"curr=%0.2f\\n\",$1/1000000); }'";
 		bHasInternalCurrent = true;
 	}
+	//New Armbian Kernal 4.14+
+	if (file_exist("/sys/class/power_supply/axp20x-ac/voltage_now"))
+	{
+		szInternalVoltageCommand = "cat /sys/class/power_supply/axp20x-ac/voltage_now | awk '{ printf (\"volt=%0.2f\\n\",$1/1000000); }'";
+		bHasInternalVoltage = true;
+	}
+	if (file_exist("/sys/class/power_supply/axp20x-ac/current_now"))
+	{
+		szInternalCurrentCommand = "cat /sys/class/power_supply/axp20x-ac/current_now | awk '{ printf (\"curr=%0.2f\\n\",$1/1000000); }'";
+		bHasInternalCurrent = true;
+	}
+
 #if defined (__OpenBSD__)
 	szInternalTemperatureCommand = "sysctl hw.sensors.acpitz0.temp0|sed -e 's/.*temp0/temp/'|cut -d ' ' -f 1";
 	bHasInternalTemperature = true;
@@ -849,9 +661,11 @@ bool ParseConfigFile(const std::string &szConfigFile)
 		}
 		else if (szFlag == "app_path") {
 			szStartupFolder = sLine;
+			FixFolderEnding(szStartupFolder);
 		}
 		else if (szFlag == "userdata_path") {
 			szUserDataFolder = sLine;
+			FixFolderEnding(szUserDataFolder);
 		}
 		else if (szFlag == "daemon_name") {
 			daemonname = sLine;
@@ -876,6 +690,8 @@ void DisplayAppVersion()
 	_log.Log(LOG_STATUS, "Domoticz V%s (c)2012-%d GizMoCuz", szAppVersion.c_str(), ActYear);
 	_log.Log(LOG_STATUS, "Build Hash: %s, Date: %s", szAppHash.c_str(), szAppDate.c_str());
 }
+
+time_t m_LastHeartbeat = 0;
 
 #if defined WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance,_In_opt_ HINSTANCE hPrevInstance,_In_ LPSTR lpCmdLine,_In_ int nShowCmd)
@@ -937,6 +753,7 @@ int main(int argc, char**argv)
 				_log.Log(LOG_ERROR, "Please specify an output log file");
 				return 1;
 			}
+			logfile = cmdLine.GetSafeArgument("-log", 0, "domoticz.log");
 		}
 		if (cmdLine.HasSwitch("-approot"))
 		{
@@ -946,10 +763,15 @@ int main(int argc, char**argv)
 				return 1;
 			}
 			std::string szroot = cmdLine.GetSafeArgument("-approot", 0, "");
-			if (szroot.size() != 0)
+			if (szroot.size() != 0) {
 				szStartupFolder = szroot;
+				FixFolderEnding(szStartupFolder);
+			}
 		}
 	}
+
+	if (!logfile.empty())
+		_log.SetOutputFile(logfile.c_str());
 
 	if (szStartupFolder.empty())
 	{
@@ -980,6 +802,9 @@ int main(int argc, char**argv)
 #endif
 #endif
 	}
+#if defined(__linux__)
+	g_bIsWSL = IsWSL();
+#endif
 	GetAppVersion();
 	DisplayAppVersion();
 
@@ -1002,7 +827,8 @@ int main(int argc, char**argv)
 		}
 		if ((cmdLine.HasSwitch("-version")) || (cmdLine.HasSwitch("--version")))
 		{
-			DisplayAppVersion();
+			//Application version is already displayed
+			//DisplayAppVersion();
 			return 0;
 		}
 		if (cmdLine.HasSwitch("-userdata"))
@@ -1014,7 +840,10 @@ int main(int argc, char**argv)
 			}
 			std::string szroot = cmdLine.GetSafeArgument("-userdata", 0, "");
 			if (szroot.size() != 0)
+			{
 				szUserDataFolder = szroot;
+				FixFolderEnding(szUserDataFolder);
+			}
 		}
 		if (cmdLine.HasSwitch("-startupdelay"))
 		{
@@ -1339,9 +1168,32 @@ int main(int argc, char**argv)
 
 	if (!g_bRunAsDaemon)
 	{
+#ifndef WIN32
+		struct sigaction newSigAction;
+
+		/* Set up a signal handler */
+		newSigAction.sa_sigaction = signal_handler;
+		sigemptyset(&newSigAction.sa_mask);
+		newSigAction.sa_flags = SA_SIGINFO;
+
+		/* Signals to handle */
+		sigaction(SIGTERM, &newSigAction, NULL);    // catch term signal
+		sigaction(SIGINT,  &newSigAction, NULL);    // catch interrupt signal
+		sigaction(SIGSEGV, &newSigAction, NULL);    // catch segmentation fault signal
+		sigaction(SIGABRT, &newSigAction, NULL);    // catch abnormal termination signal
+		sigaction(SIGILL,  &newSigAction, NULL);    // catch invalid program image
+		sigaction(SIGFPE,  &newSigAction, NULL);    // catch floating point error
+		sigaction(SIGUSR1, &newSigAction, NULL);    // catch SIGUSR1 (used by watchdog)
+#else
 		signal(SIGINT, signal_handler);
 		signal(SIGTERM, signal_handler);
+#endif
 	}
+
+	// start Watchdog thread after daemonization
+	m_LastHeartbeat = mytime(NULL);
+	std::thread thread_watchdog(Do_Watchdog_Work);
+	SetThreadName(thread_watchdog.native_handle(), "Watchdog");
 
 	if (!m_mainworker.Start())
 	{
@@ -1349,14 +1201,6 @@ int main(int argc, char**argv)
 	}
 	m_StartTime = time(NULL);
 
-	if (!bUseConfigFile) {
-		if (cmdLine.HasSwitch("-log"))
-		{
-			logfile = cmdLine.GetSafeArgument("-log", 0, "domoticz.log");
-		}
-	}
-	if (!logfile.empty())
-		_log.SetOutputFile(logfile.c_str());
 
 	/* now, lets get into an infinite loop of doing nothing. */
 #if defined WIN32
@@ -1377,12 +1221,14 @@ int main(int argc, char**argv)
 		}
 		else
 			sleep_milliseconds(100);
+		m_LastHeartbeat = mytime(NULL);
 	}
 	TrayMessage(NIM_DELETE, NULL);
 #else
 	while ( !g_bStopApplication )
 	{
 		sleep_seconds(1);
+		m_LastHeartbeat = mytime(NULL);
 	}
 #endif
 	_log.Log(LOG_STATUS, "Closing application!...");
@@ -1410,6 +1256,8 @@ int main(int argc, char**argv)
 	WSACleanup();
 	CoUninitialize();
 #endif
+	g_stop_watchdog = true;
+	thread_watchdog.join();
 	return 0;
 }
 

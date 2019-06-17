@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DomoticzHardware.h"
-#include <iostream>
 
 class CDummy : public CDomoticzHardwareBase
 {

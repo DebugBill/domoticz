@@ -1,13 +1,12 @@
 #pragma once
 
-#include <vector>
 #include <string>
 #include "RFXNames.h"
 #include "../hardware/hardwaretypes.h"
 #include "Helper.h"
 #include "../httpclient/UrlEncode.h"
 #include "../httpclient/HTTPClient.h"
-#include <map>
+#include "StoppableTask.h"
 
 #define timer_resolution_hz 25
 
@@ -32,6 +31,15 @@ enum _eWeightUnit
 {
     WEIGHTUNIT_KG,
     WEIGHTUNIT_LB,
+};
+
+enum _eUsrVariableType
+{
+	USERVARTYPE_INTEGER = 0,
+	USERVARTYPE_FLOAT, //1
+	USERVARTYPE_STRING, //2
+	USERVARTYPE_DATE, //3 Date in format DD/MM/YYYY
+	USERVARTYPE_TIME, //4 Time in 24 hr format HH:MM
 };
 
 enum _eTaskItemType
@@ -214,7 +222,7 @@ struct _tTaskItem
 			getclock(&tItem._DelayTimeBegin);
 		return tItem;
 	}
-	static _tTaskItem GetHTTPPage(const float DelayTime, const std::string &URL, const std::string &eventName)
+	static _tTaskItem GetHTTPPage(const float DelayTime, const std::string &URL, const std::string &/*eventName*/)
 	{
 		return GetHTTPPage(DelayTime, URL, "", HTTPClient::HTTP_METHOD_GET, "", "");
 	}
@@ -296,17 +304,18 @@ typedef   std::vector<std::string> TSqlRowQuery;
 // result for an sql query : Vector of TSqlRowQuery
 typedef   std::vector<TSqlRowQuery> TSqlQueryResult;
 
-class CSQLHelper
+class CSQLHelper : public StoppableTask
 {
 public:
 	CSQLHelper(void);
 	~CSQLHelper(void);
 
-	bool OpenDatabase();
 	void SetDatabaseName(const std::string &DBName);
 
-	bool BackupDatabase(const std::string &OutputFile);
+	bool OpenDatabase();
+	void CloseDatabase();
 
+	bool BackupDatabase(const std::string &OutputFile);
 	bool RestoreDatabase(const std::string &dbase);
 
 	//Returns DeviceRowID
@@ -315,7 +324,7 @@ public:
 	uint64_t UpdateValue(const int HardwareID, const char* ID, const unsigned char unit, const unsigned char devType, const unsigned char subType, const unsigned char signallevel, const unsigned char batterylevel, const int nValue, const char* sValue, std::string &devname, const bool bUseOnOffAction=true);
 	uint64_t UpdateValueLighting2GroupCmd(const int HardwareID, const char* ID, const unsigned char unit, const unsigned char devType, const unsigned char subType, const unsigned char signallevel, const unsigned char batterylevel, const int nValue, const char* sValue, std::string &devname, const bool bUseOnOffAction = true);
 	uint64_t UpdateValueHomeConfortGroupCmd(const int HardwareID, const char* ID, const unsigned char unit, const unsigned char devType, const unsigned char subType, const unsigned char signallevel, const unsigned char batterylevel, const int nValue, const char* sValue, std::string &devname, const bool bUseOnOffAction = true);
-	
+
 	bool DoesDeviceExist(const int HardwareID, const char* ID, const unsigned char unit, const unsigned char devType, const unsigned char subType);
 
 	uint64_t InsertDevice(const int HardwareID, const char* ID, const unsigned char unit, const unsigned char devType, const unsigned char subType, const int switchType, const int nValue, const char* sValue, const std::string &devname, const unsigned char signallevel = 12, const unsigned char batterylevel = 255, const int used = 0);
@@ -392,20 +401,16 @@ public:
 	void safe_exec_no_return(const char *fmt, ...);
 	bool safe_UpdateBlobInTableWithID(const std::string &Table, const std::string &Column, const std::string &sID, const std::string &BlobData);
 	bool DoesColumnExistsInTable(const std::string &columnname, const std::string &tablename);
-	std::string DeleteUserVariable(const std::string &idx);
-	std::string SaveUserVariable(const std::string &varname, const std::string &vartype, const std::string &varvalue);
-	std::string UpdateUserVariable(const std::string &idx, const std::string &varname, const std::string &vartype, const std::string &varvalue, const bool eventtrigger);
-	bool SetUserVariable(const uint64_t idx, const std::string &varvalue, const bool eventtrigger);
-	std::vector<std::vector<std::string> > GetUserVariables();
+
+	bool AddUserVariable(const std::string &varname, const _eUsrVariableType eVartype, const std::string &varvalue, std::string &errorMessage);
+	bool UpdateUserVariable(const std::string &idx, const std::string &varname, const _eUsrVariableType eVartype, const std::string &varvalue, const bool eventtrigger, std::string &errorMessage);
+	void DeleteUserVariable(const std::string &idx);
+	bool CheckUserVariable(const _eUsrVariableType eVartype, const std::string &varvalue, std::string &errorMessage);
 
 	void UpdateDeviceValue(const char * FieldName , std::string &Value , std::string &Idx );
 	void UpdateDeviceValue(const char * FieldName , int Value , std::string &Idx )   ;
 	void UpdateDeviceValue(const char * FieldName , float Value , std::string &Idx ) ;
-	double ConvertTemperature(double tempcelcius);
-	double ConvertTemperatureUnit(double tempcelcius);
 	std::string GetDeviceValue(const char * FieldName , const char *Idx );
-
-	float getTemperatureFromSValue(const char * sValue);
 
 	bool GetPreferencesVar(const std::string &Key, double &Value);
 	void UpdatePreferencesVar(const std::string &Key, const double Value);
@@ -418,6 +423,8 @@ public:
 	std::map<std::string, std::string> BuildDeviceOptions(const std::string & options, const bool decode = true);
 	std::map<std::string, std::string> GetDeviceOptions(const std::string & idx);
 	bool SetDeviceOptions(const uint64_t idx, const std::map<std::string, std::string> & options);
+
+	float GetCounterDivider(const int metertype, const int dType, const float DefaultValue);
 public:
 	std::string m_LastSwitchID;	//for learning command
 	uint64_t m_LastSwitchRowID;
@@ -438,7 +445,7 @@ public:
 	bool		m_bLogEventScriptTrigger;
 	bool		m_bDisableDzVentsSystem;
 private:
-	boost::mutex	m_sqlQueryMutex;
+	std::mutex		m_sqlQueryMutex;
 	sqlite3			*m_dbase;
 	std::string		m_dbase_name;
 	unsigned char	m_sensortimeoutcounter;
@@ -449,10 +456,10 @@ private:
 	bool			m_bPreviousAcceptNewHardware;
 
 	std::vector<_tTaskItem> m_background_task_queue;
-	boost::shared_ptr<boost::thread> m_background_task_thread;
-	boost::mutex m_background_task_mutex;
-	bool m_stoprequested;
+	std::shared_ptr<std::thread> m_thread;
+	std::mutex m_background_task_mutex;
 	bool StartThread();
+	void StopThread();
 	void Do_Work();
 
 	bool SwitchLightFromTasker(const std::string &idx, const std::string &switchcmd, const std::string &level, const std::string &color);
@@ -465,12 +472,12 @@ private:
 	uint64_t UpdateValueInt(const int HardwareID, const char* ID, const unsigned char unit, const unsigned char devType, const unsigned char subType, const unsigned char signallevel, const unsigned char batterylevel, const int nValue, const char* sValue, std::string &devname, const bool bUseOnOffAction);
 
 	bool UpdateCalendarMeter(
-		const int HardwareID, 
-		const char* DeviceID, 
-		const unsigned char unit, 
-		const unsigned char devType, 
-		const unsigned char subType, 
-		const bool shortLog, 
+		const int HardwareID,
+		const char* DeviceID,
+		const unsigned char unit,
+		const unsigned char devType,
+		const unsigned char subType,
+		const bool shortLog,
 		const long long MeterValue,
 		const long long MeterUsage,
 		const char* date);
@@ -497,8 +504,6 @@ private:
 	void AddCalendarUpdatePercentage();
 	void AddCalendarUpdateFan();
 	void CleanupShortLog();
-	std::string CheckUserVariable(const int vartype, const std::string &varvalue);
-	std::string CheckUserVariableName(const std::string &varname);
 	bool CheckDate(const std::string &sDate, int &d, int &m, int &y);
 	bool CheckDateSQL(const std::string &sDate);
 	bool CheckDateTimeSQL(const std::string &sDateTime);

@@ -1,5 +1,13 @@
 #pragma once
 
+enum _eTimeFormat
+{
+	TF_Time = 0,	// 0
+	TF_Date,		// 1
+	TF_DateTime,	// 2
+	TF_DateTimeMs	// 3
+};
+
 void StringSplit(std::string str, const std::string &delim, std::vector<std::string> &results);
 uint64_t hexstrtoui64(const std::string &str);
 void stdreplace(
@@ -27,17 +35,15 @@ void sleep_milliseconds(const long milliseconds);
 int createdir(const char *szDirName, int secattr);
 int mkdir_deep(const char *szDirName, int secattr);
 
+int RemoveDir(const std::string &dirnames, std::string &errorPath);
+
 double ConvertToCelsius(const double Fahrenheit);
 double ConvertToFahrenheit(const double Celsius);
 double ConvertTemperature(const double tValue, const unsigned char tSign);
 
 std::vector<std::string> ExecuteCommandAndReturn(const std::string &szCommand, int &returncode);
 
-void DateAsciiTotmTime (std::string &sLastUpdate , struct tm &LastUpdateTime  );
-void AsciiTime (struct tm &ltime , char * pLastUpdate );
-std::string  GetCurrentAsciiTime ();
-void AsciiTime ( time_t DateStart, char * DateStr );
-time_t DateAsciiToTime_t ( std::string & DateStr );
+std::string TimeToString(const time_t *ltime, const _eTimeFormat format);
 std::string GenerateMD5Hash(const std::string &InputString, const std::string &Salt="");
 
 void hsb2rgb(const float hue, const float saturation, const float vlue, int &outR, int &outG, int &outB, const double maxValue = 100.0);
@@ -49,6 +55,8 @@ void padLeft(std::string &str, const size_t num, const char paddingChar = '0');
 bool IsLightOrSwitch(const int devType, const int subType);
 
 int MStoBeaufort(const float ms);
+
+void FixFolderEnding(std::string &folder);
 
 struct dirent;
 bool dirent_is_directory(const std::string &dir, struct dirent *ent);
@@ -66,10 +74,17 @@ int getclock(struct timeval *tv);
 int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y);
 
 bool IsArgumentSecure(const std::string &arg);
-<<<<<<< HEAD
-
-=======
 uint32_t SystemUptime();
 int GenerateRandomNumber(const int range);
 int GetDirFilesRecursive(const std::string &DirPath, std::map<std::string, int> &_Files);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
+
+int SetThreadName(const std::thread::native_handle_type &thread, const char *name);
+
+#if !defined(WIN32)
+	bool IsDebuggerPresent(void);
+#endif
+#if defined(__linux__)
+	bool IsWSL(void); //Detects if running under Windows Subsystem for Linux (WSL)
+#endif
+
+std::string GenerateUUID();

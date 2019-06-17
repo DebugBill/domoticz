@@ -3,7 +3,7 @@
 #include "RFXNames.h"
 #include "../hardware/hardwaretypes.h"
 #include <string>
-#include <vector>
+#include "StoppableTask.h"
 
 struct tScheduleItem
 {
@@ -18,7 +18,7 @@ struct tScheduleItem
 	unsigned short startYear;
 	unsigned char startHour;
 	unsigned char startMin;
-	_eTimerType	timerType; 
+	_eTimerType	timerType;
 	_eTimerCommand timerCmd;
 	int Level;
 	_tColor Color;
@@ -62,7 +62,7 @@ struct tScheduleItem
 	}
 };
 
-class CScheduler
+class CScheduler : public StoppableTask
 {
 public:
 	CScheduler(void);
@@ -73,16 +73,22 @@ public:
 
 	void ReloadSchedules();
 
-	void SetSunRiseSetTimers(const std::string &sSunRise, const std::string &sSunSet);
+	void SetSunRiseSetTimers(const std::string &sSunRise, const std::string &sSunSet, const std::string &sSunAtSouth, const std::string &sCivTwStart, const std::string &sCivTwEnd, const std::string &sNautTwStart, const std::string &sNauTtwEnd, const std::string &sAstTwStart, const std::string &sAstTwEnd);
 
 	std::vector<tScheduleItem> GetScheduleItems();
 
 private:
 	time_t m_tSunRise;
 	time_t m_tSunSet;
-	boost::mutex m_mutex;
-	volatile bool m_stoprequested;
-	boost::shared_ptr<boost::thread> m_thread;
+	time_t m_tSunAtSouth;
+	time_t m_tCivTwStart;
+	time_t m_tCivTwEnd;
+	time_t m_tNautTwStart;
+	time_t m_tNautTwEnd;
+	time_t m_tAstTwStart;
+	time_t m_tAstTwEnd;
+	std::mutex m_mutex;
+	std::shared_ptr<std::thread> m_thread;
 	std::vector<tScheduleItem> m_scheduleitems;
 
 	//our thread
