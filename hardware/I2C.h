@@ -2,15 +2,12 @@
 
 #include "DomoticzHardware.h"
 
-<<<<<<< HEAD
-=======
 typedef union _i2c_data
 {
 	uint8_t  byte[2];
 	uint16_t word;
 } i2c_data;
 
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 class I2C : public CDomoticzHardwareBase
 {
 public:
@@ -21,7 +18,8 @@ public:
 		I2CTYPE_HTU21D,
 		I2CTYPE_TSL2561,
 		I2CTYPE_PCF8574,
-		I2CTYPE_BME280
+		I2CTYPE_BME280,
+		I2CTYPE_MCP23017
 	};
 	explicit I2C(const int ID, const _eI2CType DevType, const std::string &Address, const std::string &SerialPort, const int Mode1);
 	~I2C();
@@ -43,10 +41,10 @@ private:
 
 	int ReadInt(int fd, uint8_t *devValues, uint8_t startReg, uint8_t bytesToRead);
 	int WriteCmd(int fd, uint8_t devAction);
+	int WriteCmdAddr(const int fd, const uint8_t CmdAddr, const uint8_t devAction);
 
 private:
-	boost::shared_ptr<boost::thread> m_thread;
-	volatile bool m_stoprequested;
+	std::shared_ptr<std::thread> m_thread;
 
 	_eI2CType m_dev_type;
 	uint8_t m_i2c_addr;
@@ -100,15 +98,6 @@ private:
 
 	// PCF8574
 	void			PCF8574_ReadChipDetails();
-<<<<<<< HEAD
-	char			PCF8574_get_pin_number_from_Unit(unsigned char unit);
-	char			PCF8574_get_i2c_addr_from_Unit(unsigned char unit);
-	int				PCF8574_create_DeviceID(unsigned char i2c_address,unsigned char pin_mask);
-	unsigned char	PCF8574_create_Unit(unsigned char i2c_address, char pin);
-	char			PCF8574_WritePin(char pin_number,char  value);
-	char 			readByteI2C(int fd, char *byte, char i2c_addr);
-	char 			writeByteI2C(int fd, char byte, char i2c_addr);
-=======
 	int			PCF8574_WritePin(uint8_t pin_number, uint8_t  value);
 	int 			readByteI2C(int fd, uint8_t *byte, uint8_t i2c_addr);
 	int 			writeByteI2C(int fd, uint8_t byte, uint8_t i2c_addr);
@@ -119,6 +108,5 @@ private:
 	int				MCP23017_WritePin(uint8_t pin_number, uint8_t  value);
 	int 			I2CWriteReg16(int fd, uint8_t reg, uint16_t value);
 	int		 		I2CReadReg16(int fd, unsigned char reg, i2c_data *data);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 };
 

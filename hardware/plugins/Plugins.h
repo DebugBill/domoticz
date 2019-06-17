@@ -43,10 +43,10 @@ namespace Plugins {
 
 		CPluginNotifier*	m_Notifier;
 
-		boost::mutex	m_TransportsMutex;
+		std::mutex	m_TransportsMutex;
 		std::vector<CPluginTransport*>	m_Transports;
 
-		boost::shared_ptr<boost::thread> m_thread;
+		std::shared_ptr<std::thread> m_thread;
 
 		bool StartHardware() override;
 		void Do_Work();
@@ -60,14 +60,11 @@ namespace Plugins {
 		CPlugin(const int HwdID, const std::string &Name, const std::string &PluginKey);
 		~CPlugin(void);
 
-		bool	IoThreadRequired();
 		int		PollInterval(int Interval = -1);
+		void*	PythonModule() { return m_PyModule; };
 		void	Notifier(std::string Notifier = "");
 		void	AddConnection(CPluginTransport*);
-<<<<<<< HEAD
-=======
 		void	RemoveConnection(CPluginTransport*);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 		bool	Initialise();
 		bool	LoadSettings();
@@ -81,16 +78,14 @@ namespace Plugins {
 		void	DisconnectEvent(CEventBase*);
 		void	Callback(std::string sHandler, void* pParams);
 		void	RestoreThread();
+		void	ReleaseThread();
 		void	Stop();
 
 		void	WriteDebugBuffer(const std::vector<byte>& Buffer, bool Incoming);
 
-		bool	WriteToHardware(const char *pdata, const unsigned char length);
-		void	Restart();
+		bool	WriteToHardware(const char *pdata, const unsigned char length) override;
 		void	SendCommand(const int Unit, const std::string &command, const int level, const _tColor color);
 		void	SendCommand(const int Unit, const std::string &command, const float level);
-<<<<<<< HEAD
-=======
 
 		void	onDeviceAdded(int Unit);
 		void	onDeviceModified(int Unit);
@@ -101,18 +96,15 @@ namespace Plugins {
 		void	DeviceRemoved(int Unit);
 
 		bool	HasNodeFailed(const int Unit);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 		std::string			m_PluginKey;
-		std::string			m_Username;
-		std::string			m_Password;
 		void*				m_DeviceDict;
 		void*				m_ImageDict;
 		void*				m_SettingsDict;
 		std::string			m_HomeFolder;
 		PluginDebugMask		m_bDebug;
-		bool				m_stoprequested;
 		bool				m_bIsStarting;
+		bool				m_bTracing;
 	};
 
 	class CPluginNotifier : public CNotificationBase

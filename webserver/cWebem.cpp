@@ -11,6 +11,7 @@
 #include "mime_types.hpp"
 #include "utf.hpp"
 #include "Base64.h"
+#include "sha1.hpp"
 #include "GZipHelper.h"
 #include <stdarg.h>
 #include <fstream>
@@ -32,65 +33,6 @@ int m_failcounter = 0;
 namespace http {
 	namespace server {
 
-<<<<<<< HEAD
-/**
-Webem constructor
-
-@param[in] server_settings  Server settings (IP address, listening port, ssl options...)
-@param[in] doc_root path to folder containing html e.g. "./"
-*/
-cWebem::cWebem(
-		const server_settings & settings,
-		const std::string& doc_root) :
-				m_io_service(),
-				m_settings(settings),
-				myRequestHandler(doc_root, this),
-				m_DigistRealm("Domoticz.com"),
-				m_session_clean_timer(m_io_service, boost::posix_time::minutes(1)),
-				m_io_service_thread(boost::bind(&boost::asio::io_service::run, &m_io_service)),
-				myServer(server_factory::create(settings, myRequestHandler)) {
-	m_authmethod = AUTH_LOGIN;
-	mySessionStore = NULL;
-	// associate handler to timer and schedule the first iteration
-	m_session_clean_timer.async_wait(boost::bind(&cWebem::CleanSessions, this));
-}
-
-cWebem::~cWebem() {
-	// Remove reference to CWebServer before its deletion (fix a "pure virtual method called" exception on server termination)
-	mySessionStore = NULL;
-	// Delete server (no need with smart pointer)
-}
-
-/**
-
-Start the server.
-
-This does not return.
-
-IMPORTANT: This method does not return. If application needs to continue, start new thread with call to this method.
-
-*/
-void cWebem::Run() {
-	// Start Web server
-	if (myServer != NULL) {
-		myServer->run();
-	}
-}
-
-/**
-
-Stop and delete the internal server.
-
-IMPORTANT:  To start the server again, delete it and create a new cWebem instance.
-
-*/
-void cWebem::Stop() {
-	// Stop session cleaner
-	try {
-		if (!m_io_service.stopped()) {
-			m_io_service.stop();
-			m_io_service_thread.join();
-=======
 		/**
 		Webem constructor
 
@@ -121,7 +63,6 @@ void cWebem::Stop() {
 			// Remove reference to CWebServer before its deletion (fix a "pure virtual method called" exception on server termination)
 			mySessionStore = NULL;
 			// Delete server (no need with smart pointer)
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		}
 
 		/**
@@ -361,255 +302,6 @@ void cWebem::Stop() {
 				return false;
 			return true;
 		}
-<<<<<<< HEAD
-	}
-	
-	return false;
-}
-
-void cWebem::AddUserPassword(const unsigned long ID, const std::string &username, const std::string &password, const _eUserRights userrights, const int activetabs)
-{
-	_tWebUserPassword wtmp;
-	wtmp.ID=ID;
-	wtmp.Username=username;
-	wtmp.Password=password;
-	wtmp.userrights=userrights;
-	wtmp.ActiveTabs = activetabs;
-	m_userpasswords.push_back(wtmp);
-}
-
-void cWebem::ClearUserPasswords()
-{
-	m_userpasswords.clear();
-
-	boost::mutex::scoped_lock lock(m_sessionsMutex);
-	m_sessions.clear(); //TODO : check if it is really necessary
-}
-
-void cWebem::AddLocalNetworks(std::string network)
-{
-	_tIPNetwork ipnetwork;
-
-	if (network=="")
-	{
-		//add local host
-		char ac[256];
-		if (gethostname(ac, sizeof(ac)) != SOCKET_ERROR) {
-			ipnetwork.hostname=ac;
-			std::transform(ipnetwork.hostname.begin(), ipnetwork.hostname.end(), ipnetwork.hostname.begin(), ::tolower);
-			m_localnetworks.push_back(ipnetwork);
-		}
-		return;
-	}
-	std::string inetwork=network;
-	std::string inetworkmask=network;
-	std::string mask=network;
-
-
-	size_t pos=network.find_first_of("*");
-	if (pos>0)
-	{
-		stdreplace(inetwork,"*","0");
-		int a, b, c, d;
-		if (sscanf(inetwork.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d) != 4)
-			return;
-		std::stringstream newnetwork;
-		newnetwork << std::dec << a << "." << std::dec << b << "." << std::dec << c << "." << std::dec << d;
-		inetwork=newnetwork.str();
-
-		stdreplace(inetworkmask,"*","999");
-		int e, f, g, h;
-		if (sscanf(inetworkmask.c_str(), "%d.%d.%d.%d", &e, &f, &g, &h) != 4)
-			return;
-
-		std::stringstream newmask;
-		if (e!=999) newmask << "255"; else newmask << "0";
-		newmask << ".";
-		if (f!=999) newmask << "255"; else newmask << "0";
-		newmask << ".";
-		if (g!=999) newmask << "255"; else newmask << "0";
-		newmask << ".";
-		if (h!=999) newmask << "255"; else newmask << "0";
-		mask=newmask.str();
-
-		ipnetwork.network=IPToUInt(inetwork);
-		ipnetwork.mask=IPToUInt(mask);
-	}
-	else
-	{
-		pos=network.find_first_of("/");
-		if (pos>0)
-		{
-			unsigned char keepbits = (unsigned char)atoi(network.substr(pos+1).c_str());
-			uint32_t imask = keepbits > 0 ? 0x00 - (1<<(32 - keepbits)) : 0xFFFFFFFF;
-			inetwork=network.substr(0,pos);
-			ipnetwork.network=IPToUInt(inetwork);
-			ipnetwork.mask=imask;
-		}
-		else
-		{
-			//Is it an IP address of hostname?
-			boost::system::error_code ec;
-			boost::asio::ip::address::from_string( network, ec );
-			if ( ec )
-			{
-				//only allow ip's, localhost is covered above
-				return;
-				//ipnetwork.hostname=network;
-			}
-			else
-			{
-				//single IP?
-				ipnetwork.network=IPToUInt(inetwork);
-				ipnetwork.mask=IPToUInt("255.255.255.255");
-			}
-		}
-	}
-
-	m_localnetworks.push_back(ipnetwork);
-}
-
-void cWebem::ClearLocalNetworks()
-{
-	m_localnetworks.clear();
-}
-
-void cWebem::SetDigistRealm(std::string realm)
-{
-	m_DigistRealm=realm;
-}
-
-void cWebem::SetZipPassword(std::string password)
-{
-	m_zippassword = password;
-}
-
-void cWebem::SetSessionStore(session_store_impl_ptr sessionStore) {
-	mySessionStore = sessionStore;
-}
-
-session_store_impl_ptr cWebem::GetSessionStore() {
-	return mySessionStore;
-}
-
-// Check the user's password, return 1 if OK
-static int check_password(struct ah *ah, const std::string &ha1, const std::string &realm)
-{
-	if (
-		(ah->nonce.size() == 0) &&
-		(ah->response.size() != 0)
-		)
-	{
-		return (ha1 == GenerateMD5Hash(ah->response));
-	}
-	return 0;
-}
-
-const std::string cWebem::GetPort() {
-	return m_settings.listening_port;
-}
-
-WebEmSession * cWebem::GetSession(const std::string & ssid) {
-	boost::mutex::scoped_lock lock(m_sessionsMutex);
-	std::map<std::string, WebEmSession>::iterator itt = m_sessions.find(ssid);
-	if (itt != m_sessions.end()) {
-		return &itt->second;
-	}
-	return NULL;
-}
-void cWebem::AddSession(const WebEmSession & session) {
-	boost::mutex::scoped_lock lock(m_sessionsMutex);
-	m_sessions[session.id] = session;
-}
-
-void cWebem::RemoveSession(const WebEmSession & session) {
-	RemoveSession(session.id);
-}
-
-void cWebem::RemoveSession(const std::string & ssid) {
-	boost::mutex::scoped_lock lock(m_sessionsMutex);
-	std::map<std::string, WebEmSession>::iterator itt = m_sessions.find(ssid);
-	if (itt != m_sessions.end()) {
-		m_sessions.erase(itt);
-	}
-}
-
-int cWebem::CountSessions() {
-	boost::mutex::scoped_lock lock(m_sessionsMutex);
-	return (int) m_sessions.size();
-}
-
-void cWebem::CleanSessions() {
-#ifdef DEBUG_WWW
-	_log.Log(LOG_STATUS, "[web:%s] cleaning sessions...", GetPort().c_str());
-#endif
-	int before = CountSessions();
-	// Clean up timed out sessions from memory
-	std::vector<std::string> ssids;
-	{
-		boost::mutex::scoped_lock lock(m_sessionsMutex);
-		time_t now = mytime(NULL);
-		std::map<std::string, WebEmSession>::iterator itt;
-		for (itt = m_sessions.begin(); itt != m_sessions.end(); ++itt) {
-			if (itt->second.timeout < now) {
-				ssids.push_back(itt->second.id);
-			}
-		}
-	}
-	std::vector<std::string>::iterator ssitt;
-	for (ssitt = ssids.begin(); ssitt != ssids.end(); ++ssitt) {
-		std::string ssid = *ssitt;
-		RemoveSession(ssid);
-	}
-	int after = CountSessions();
-	std::stringstream ss;
-	{
-		boost::mutex::scoped_lock lock(m_sessionsMutex);
-		std::map<std::string, WebEmSession>::iterator itt;
-		int i = 0;
-		for (itt = m_sessions.begin(); itt != m_sessions.end(); ++itt) {
-			if (i > 0) {
-				ss << ",";
-			}
-			ss << itt->second.id;
-			i += 1;
-		}
-	}
-	// Clean up expired sessions from database in order to avoid to wait for the domoticz restart (long time running instance)
-	if (mySessionStore != NULL) {
-		this->mySessionStore->CleanSessions();
-	}
-	// Schedule next cleanup
-	m_session_clean_timer.expires_at(m_session_clean_timer.expires_at() + boost::posix_time::minutes(15));
-	m_session_clean_timer.async_wait(boost::bind(&cWebem::CleanSessions, this));
-}
-
-// Return 1 on success. Always initializes the ah structure.
-int cWebemRequestHandler::parse_auth_header(const request& req, struct ah *ah)
-{
-	const char *auth_header;
-
-	if ((auth_header = request::get_req_header(&req, "Authorization")) == NULL) {
-		return 0;
-	}
-
-	// X509 Auth header
-	if (boost::icontains(auth_header, "/CN="))
-	{
-		// DN looks like: /C=Country/ST=State/L=City/O=Org/OU=OrganizationUnit/CN=username/emailAddress=user@mail.com
-		std::string dn = auth_header;
-		size_t spos, epos;
-
-		spos = dn.find("/CN=");
-		epos = dn.find("/", spos + 1);
-		if (spos != std::string::npos) {
-				if (epos == std::string::npos) {
-						epos = dn.size();
-				}
-				ah->user = dn.substr(spos + 4, epos - spos - 4);
-		}
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 		/**
 		Do not call from application code,
@@ -744,137 +436,6 @@ int cWebemRequestHandler::parse_auth_header(const request& req, struct ah *ah)
 			{
 				q += 7;
 			}
-<<<<<<< HEAD
-			session.isnew = true;
-			session.username = itt->Username;
-			session.rights = itt->userrights;
-			session.rememberme = false;
-			m_failcounter=0;
-			return 1;
-		}
-	}
-	m_failcounter++;
-	return 0;
-}
-
-bool IsIPInRange(const std::string &ip, const _tIPNetwork &ipnetwork) 
-{
-	if (ipnetwork.hostname.size()!=0)
-	{
-		return (ip==ipnetwork.hostname);
-	}
-	uint32_t ip_addr = IPToUInt(ip);
-	if (ip_addr==0)
-		return false;
-
-	uint32_t net_lower = (ipnetwork.network & ipnetwork.mask);
-	uint32_t net_upper = (net_lower | (~ipnetwork.mask));
-
-	if (ip_addr >= net_lower &&
-		ip_addr <= net_upper)
-		return true;
-	return false;
-}
-
-//Returns true is the connected host is in the local network
-bool cWebemRequestHandler::AreWeInLocalNetwork(const std::string &sHost, const request& req)
-{
-	//check if in local network(s)
-	if (myWebem->m_localnetworks.size()==0)
-		return false;
-	if (sHost.size()<3)
-		return false;
-
-	std::string host=sHost;
-	std::vector<_tIPNetwork>::const_iterator itt;
-
-	if (host=="127.0.0.1")
-	{
-		//We could be using a proxy server
-		//Check if we have the "X-Forwarded-For" (connection via proxy)
-		const char *host_header=request::get_req_header(&req, "X-Forwarded-For");
-		if (host_header!=NULL)
-		{
-			host=host_header;
-			if (strstr(host_header,",")!=NULL)
-			{
-				//Multiple proxies are used... this is not very common
-				host_header=request::get_req_header(&req, "X-Real-IP"); //try our NGINX header
-				if (!host_header)
-				{
-					_log.Log(LOG_ERROR,"Webserver: Multiple proxies are used (Or possible spoofing attempt), ignoring client request (remote address: %s)",host.c_str());
-					return false;
-				}
-				host=host_header;
-			}
-		}
-	}
-
-	/* RK, this doesn't work with IPv6 addresses.
-	pos=host.find_first_of(":");
-	if (pos!=std::string::npos)
-		host=host.substr(0,pos);
-	*/
-
-	for (itt=myWebem->m_localnetworks.begin(); itt!=myWebem->m_localnetworks.end(); ++itt)
-	{
-		if (IsIPInRange(host,*itt))
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-const char * months[12] = {
-	"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
-
-const char * wkdays[7] = {
-	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-};
-
-char *make_web_time(const time_t rawtime)
-{
-	static char buffer[256];
-	struct tm *gmt=gmtime(&rawtime);
-	sprintf(buffer, "%s, %02d %s %04d %02d:%02d:%02d GMT",
-		wkdays[gmt->tm_wday],
-		gmt->tm_mday,
-		months[gmt->tm_mon],
-		gmt->tm_year + 1900,
-		gmt->tm_hour,
-		gmt->tm_min,
-		gmt->tm_sec);
-	return buffer;
-}
-
-void cWebemRequestHandler::send_remove_cookie(reply& rep)
-{
-	std::stringstream sstr;
-	sstr << "SID=none";
-	sstr << "; HttpOnly; path=/; Expires=" << make_web_time(0);
-	reply::add_header(&rep, "Set-Cookie", sstr.str(), false);
-}
-
-std::string cWebemRequestHandler::generateSessionID()
-{
-	// Session id should not be predictable
-	boost::uuids::random_generator gen;
-	std::stringstream ss;
-	std::string randomValue;
-	
-	boost::uuids::uuid u = gen();
-	ss << u;
-	randomValue = ss.str();
-
-	std::string sessionId = GenerateMD5Hash(base64_encode((const unsigned char*)randomValue.c_str(), randomValue.size()));
-
-#ifdef DEBUG_WWW
-	_log.Log(LOG_STATUS, "[web:%s] generate new session id token %s", myWebem->GetPort().c_str(), sessionId.c_str());
-#endif
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 			std::string name;
 			std::string value;
@@ -908,77 +469,9 @@ std::string cWebemRequestHandler::generateSessionID()
 				req.parameters.insert(std::pair< std::string, std::string >(name, value));
 				p = q + 1;
 			}
-<<<<<<< HEAD
-		}
-	}
-	return false;
-}
-
-static void GetURICommandParameter(const std::string &uri, std::string &cmdparam)
-{
-	cmdparam = uri;
-	size_t ppos1 = uri.find("&param=");
-	size_t ppos2 = uri.find("?param=");
-	if (
-		(ppos1 == std::string::npos) &&
-		(ppos2 == std::string::npos)
-		)
-		return;
-	size_t ppos = ppos1;
-	if (ppos == std::string::npos)
-		ppos = ppos2;
-	else
-	{
-		if ((ppos2 < ppos) && (ppos != std::string::npos))
-			ppos = ppos2;
-	}
-	cmdparam = uri.substr(ppos + 7);
-	ppos = cmdparam.find("&");
-	if (ppos != std::string::npos)
-	{
-		cmdparam = cmdparam.substr(0, ppos);
-	}
-}
-
-bool cWebemRequestHandler::CheckAuthentication(WebEmSession & session, const request& req, reply& rep)
-{
-	session.rights = -1; // no rights
-
-	if (myWebem->m_userpasswords.size() == 0)
-	{
-		session.rights = 2;
-		return true;//no username/password we are admin
-	}
-
-	if (AreWeInLocalNetwork(session.remote_host, req))
-	{
-		session.rights = 2;
-		return true;//we are in the local network, no authentication needed, we are admin
-	}
-
-	//Check cookie if still valid
-	const char* cookie_header = request::get_req_header(&req, "Cookie");
-	if (cookie_header != NULL)
-	{
-		std::string sSID;
-		std::string sAuthToken;
-		std::string szTime;
-		bool expired = false;
-
-		// Parse session id and its expiration date
-		std::string scookie = cookie_header;
-		size_t fpos = scookie.find("SID=");
-		if (fpos != std::string::npos)
-		{
-			scookie = scookie.substr(fpos);
-			fpos = 0;
-			size_t epos = scookie.find(';');
-			if (epos != std::string::npos)
-=======
 
 			// call the function
 			try
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			{
 				pfun->second(session, req, req.uri);
 			}
@@ -1030,71 +523,6 @@ bool cWebemRequestHandler::CheckAuthentication(WebEmSession & session, const req
 			return false;
 		}
 
-<<<<<<< HEAD
-		WebEmSession* oldSession = myWebem->GetSession(session.id);
-		if (oldSession == NULL) {
-#ifdef DEBUG_WWW
-			_log.Log(LOG_STATUS, "[web:%s] CheckAuthToken(%s_%s_%s) : restore session", myWebem->GetPort().c_str(), session.id.c_str(), session.auth_token.c_str(), session.username.c_str());
-#endif
-			myWebem->AddSession(session);
-		}
-	}
-
-	return true;
-}
-
-void cWebemRequestHandler::removeAuthToken(const std::string & sessionId) {
-	session_store_impl_ptr sstore = myWebem->GetSessionStore();
-	if (sstore != NULL) {
-		sstore->RemoveSession(sessionId);
-	}
-}
-
-char *cWebemRequestHandler::strftime_t(const char *format, const time_t rawtime)
-{
-	static char buffer[1024];
-	struct tm ltime;
-	localtime_r(&rawtime,&ltime);
-	strftime(buffer, sizeof(buffer), format, &ltime);
-	return buffer;
-}
-
-void cWebemRequestHandler::handle_request(const request& req, reply& rep)
-{
-	if (_log.isTraceEnabled())	  
-		_log.Log(LOG_TRACE, "WEBH : Host:%s Uri;%s", req.host_address.c_str(), req.uri.c_str());
-
-	// Initialize session
-	WebEmSession session;
-	session.remote_host = req.host_address;
-	session.reply_status = reply::ok;
-	session.isnew = false;
-	session.forcelogin = false;
-	session.rememberme = false;
-
-	rep.bIsGZIP = false;
-
-	bool isPage = myWebem->IsPageOverride(req, rep);
-	bool isAction = myWebem->IsAction(req);
-
-	// Respond to CORS Preflight request (for JSON API)
-	if (req.method == "OPTIONS")
-	{
-		rep.status = reply::ok;
-		reply::add_header(&rep, "Content-Length", "0");
-		reply::add_header(&rep, "Content-Type", "text/plain");
-		reply::add_header(&rep, "Access-Control-Max-Age", "3600");
-		reply::add_header(&rep, "Access-Control-Allow-Origin", "*");
-		reply::add_header(&rep, "Access-Control-Allow-Methods", "GET, POST");
-		reply::add_header(&rep, "Access-Control-Allow-Headers", "Authorization, Content-Type");
-		return;
-	}
-
-	// Check authentication on each page or action, if it exists.
-	if ((isPage || isAction) && !CheckAuthentication(session, req, rep)) {
-		return;
-	}
-=======
 		bool cWebem::CheckForPageOverride(WebEmSession & session, request& req, reply& rep)
 		{
 			// Decode url to path.
@@ -1222,7 +650,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 					}
 				}
 			}
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 			// Determine the file extension.
 			std::string extension;
@@ -1325,9 +752,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 
 		void cWebem::SetWebRoot(const std::string &webRoot)
 		{
-<<<<<<< HEAD
-			request_handler::handle_request(requestCopy, rep, mInfo);
-=======
 			// remove trailing slash if required
 			if (webRoot.size() > 0 && webRoot[webRoot.size() - 1] == '/')
 			{
@@ -1342,7 +766,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 			{
 				m_webRoot = "/" + webRoot;
 			}
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		}
 
 		std::string cWebem::ExtractRequestPath(const std::string& original_request_path)
@@ -1388,19 +811,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 
 		bool cWebem::IsBadRequestPath(const std::string& request_path)
 		{
-<<<<<<< HEAD
-			// check if content is not gzipped, include won't work with non-text content
-			if (!rep.bIsGZIP) {
-				// Find and include any special cWebem strings
-				if (!myWebem->Include(rep.content)) {
-					if (mInfo.mtime_support && !mInfo.is_modified) {
-#ifdef DEBUG_WWW
-						_log.Log(LOG_STATUS, "[web:%s] %s not modified (1).", myWebem->GetPort().c_str(), req.uri.c_str());
-#endif
-						rep = reply::stock_reply(reply::not_modified);
-						return;
-					}
-=======
 			// Request path must be absolute and not contain "..".
 			if (request_path.empty() || request_path[0] != '/'
 				|| request_path.find("..") != std::string::npos)
@@ -1420,7 +830,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 				if (request_path.find(m_webRoot) != 0)
 				{
 					return true;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 				}
 			}
 
@@ -1446,9 +855,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 			std::unique_lock<std::mutex> lock(m_sessionsMutex);
 			m_sessions.clear(); //TODO : check if it is really necessary
 		}
-<<<<<<< HEAD
-		else if (content_type.find("image/")!=std::string::npos)
-=======
 
 		void cWebem::AddLocalNetworks(std::string network)
 		{
@@ -1538,7 +944,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 		}
 
 		void cWebem::ClearLocalNetworks()
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		{
 			m_localnetworks.clear();
 		}
@@ -1601,12 +1006,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 			}
 			return NULL;
 		}
-<<<<<<< HEAD
-	}
-	else
-	{
-		if (session.reply_status != reply::ok)
-=======
 
 		void cWebem::AddSession(const WebEmSession & session)
 		{
@@ -1615,7 +1014,6 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 		}
 
 		void cWebem::RemoveSession(const WebEmSession & session)
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		{
 			RemoveSession(session.id);
 		}
@@ -1629,26 +1027,11 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 				m_sessions.erase(itt);
 			}
 		}
-<<<<<<< HEAD
-	}
-
-	// Set timeout to make session in use
-	session.timeout = mytime(NULL) + SHORT_SESSION_TIMEOUT;
-
-	if (session.isnew == true) {
-		// Create a new session ID
-		session.id = generateSessionID();
-		session.expires = session.timeout;
-		if (session.rememberme) {
-			// Extend session by 30 days
-			session.expires += LONG_SESSION_TIMEOUT;
-=======
 
 		int cWebem::CountSessions()
 		{
 			std::unique_lock<std::mutex> lock(m_sessionsMutex);
 			return (int)m_sessions.size();
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		}
 
 		void cWebem::CleanSessions()
@@ -2821,4 +2204,3 @@ void cWebemRequestHandler::handle_request(const request& req, reply& rep)
 
 	} //namespace server {
 } //namespace http {
-

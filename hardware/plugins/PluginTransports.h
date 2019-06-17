@@ -2,6 +2,7 @@
 
 #include "../ASyncSerial.h"
 #include <boost/asio.hpp>
+#include <ctime>
 
 namespace Plugins {
 
@@ -24,7 +25,7 @@ namespace Plugins {
 		PyObject*		m_pConnection;
 
 	public:
-		CPluginTransport(int HwdID, PyObject* pConnection) : m_HwdID(HwdID), m_pConnection(pConnection), m_bConnecting(false), m_bConnected(false), m_bDisconnectQueued(false), m_iTotalBytes(0)
+		CPluginTransport(int HwdID, PyObject* pConnection) : m_HwdID(HwdID), m_pConnection(pConnection), m_bConnecting(false), m_bConnected(false), m_bDisconnectQueued(false), m_iTotalBytes(0), m_tLastSeen(0)
 		{
 			Py_INCREF(m_pConnection);
 		};
@@ -42,9 +43,10 @@ namespace Plugins {
 		bool				IsConnecting() { return m_bConnecting; };
 		bool				IsConnected() { return m_bConnected; };
 		time_t				LastSeen() { return m_tLastSeen; };
+		virtual bool		AsyncDisconnect() { return false; };
 		virtual bool		ThreadPoolRequired() { return false; };
 		long				TotalBytes() { return m_iTotalBytes; };
-		void				VerifyConnection();
+		virtual void		VerifyConnection();
 		PyObject*			Connection() { return m_pConnection; };
 	};
 
@@ -54,9 +56,10 @@ namespace Plugins {
 		std::string			m_IP;
 	public:
 		CPluginTransportIP(int HwdID, PyObject* pConnection, const std::string& Address, const std::string& Port) : CPluginTransport(HwdID, pConnection), m_IP(Address) { m_Port = Port; };
+		virtual bool		AsyncDisconnect() { return IsConnected() || IsConnecting(); };
 	};
 
-	class CPluginTransportTCP : public CPluginTransportIP, boost::enable_shared_from_this<CPluginTransportTCP>
+	class CPluginTransportTCP : public CPluginTransportIP, std::enable_shared_from_this<CPluginTransportTCP>
 	{
 	public:
 		CPluginTransportTCP(int HwdID, PyObject* pConnection, const std::string& Address, const std::string& Port) : 
@@ -79,15 +82,6 @@ namespace Plugins {
 		boost::asio::ip::tcp::socket	*m_Socket;
 	};
 
-<<<<<<< HEAD
-	class CPluginTransportUDP : CPluginTransportIP
-	{
-	public:
-		CPluginTransportUDP(int HwdID, PyObject* pConnection, const std::string& Address, const std::string& Port) : CPluginTransportIP(HwdID, pConnection, Address, Port), m_Socket(NULL), m_Resolver(NULL) { };
-		virtual	bool		handleConnect();
-		virtual	void		handleAsyncResolve(const boost::system::error_code& err, boost::asio::ip::udp::resolver::iterator endpoint_iterator);
-		virtual	void		handleAsyncConnect(const boost::system::error_code& err, boost::asio::ip::udp::resolver::iterator endpoint_iterator);
-=======
 	class CPluginTransportTCPSecure : public CPluginTransportTCP
 	{
 	public:
@@ -109,7 +103,6 @@ namespace Plugins {
 	public:
 		CPluginTransportUDP(int HwdID, PyObject* pConnection, const std::string& Address, const std::string& Port) : CPluginTransportIP(HwdID, pConnection, Address, Port), m_Socket(NULL), m_Resolver(ios) { };
 		virtual	bool		handleListen();
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		virtual void		handleRead(const boost::system::error_code& e, std::size_t bytes_transferred);
 		virtual void		handleWrite(const std::vector<byte>&);
 		virtual	bool		handleDisconnect();
@@ -120,8 +113,6 @@ namespace Plugins {
 		boost::asio::ip::udp::endpoint	m_remote_endpoint;
 	};
 
-<<<<<<< HEAD
-=======
 	class CPluginTransportICMP : CPluginTransportIP
 	{
 	public:
@@ -143,7 +134,6 @@ namespace Plugins {
 		int									m_SequenceNo;
 	};
 
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	class CPluginTransportSerial : CPluginTransport, AsyncSerial
 	{
 	private:

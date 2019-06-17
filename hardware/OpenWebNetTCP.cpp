@@ -7,6 +7,9 @@ Written by: Stéphane Lebrasseur
 Date: 04-11-2016
 Update by: Matteo Facchetti
 
+Date: 13-09-2017
+Update by: Marco Olivieri - Olix81 -
+
 License: Public domain
 
 ************************************************************************/
@@ -57,7 +60,6 @@ License: Public domain
 COpenWebNetTCP::COpenWebNetTCP(const int ID, const std::string &IPAddress, const unsigned short usIPPort, const std::string &ownPassword, const int ownScanTime) : m_szIPAddress(IPAddress)
 {
 	m_HwdID = ID;
-	m_stoprequested = false;
 	m_usIPPort = usIPPort;
 	m_ownPassword = ownPassword;
 
@@ -81,17 +83,20 @@ COpenWebNetTCP::~COpenWebNetTCP(void)
 **/
 bool COpenWebNetTCP::StartHardware()
 {
-	m_stoprequested = false;
+	RequestStart();
+
 	m_bIsStarted = true;
 	mask_request_status = 0x1; // Set scan all devices
 	LastScanTimeEnergy = LastScanTimeEnergyTot = 0;	// Force first request command
 
 	//Start monitor thread
-	m_monitorThread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&COpenWebNetTCP::MonitorFrames, this)));
+	m_monitorThread = std::make_shared<std::thread>(&COpenWebNetTCP::MonitorFrames, this);
+	SetThreadName(m_monitorThread->native_handle(), "OpenWebNetTCPMF");
 
 	//Start worker thread
 	if (m_monitorThread != NULL) {
-		m_heartbeatThread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&COpenWebNetTCP::Do_Work, this)));
+		m_heartbeatThread = std::make_shared<std::thread>(&COpenWebNetTCP::Do_Work, this);
+		SetThreadName(m_heartbeatThread->native_handle(), "OpenWebNetTCPW");
 	}
 
 	return (m_monitorThread != NULL && m_heartbeatThread != NULL);
@@ -102,34 +107,36 @@ bool COpenWebNetTCP::StartHardware()
 **/
 bool COpenWebNetTCP::StopHardware()
 {
-	m_stoprequested = true;
+	RequestStop();
 
-	_log.Log(LOG_STATUS, "COpenWebNetTCP: StopHardware");
+	//Force socket close to stop the blocking thread?
+	if (m_pStatusSocket != NULL)
+	{
+		m_pStatusSocket->close();
+	}
 
-	try {
+	try
+	{
 		if (m_monitorThread)
 		{
 			m_monitorThread->join();
-		}
-		if (m_heartbeatThread)
-		{
-			m_heartbeatThread->join();
+			m_monitorThread.reset();
 		}
 	}
 	catch (...)
 	{
-		//Don't throw from a Stop command
 	}
 
-	if (isStatusSocketConnected())
+	try
 	{
-		try {
-			disconnect();  // disconnet socket if present
-		}
-		catch (...)
+		if (m_heartbeatThread)
 		{
-			//Don't throw from a Stop command
+			m_heartbeatThread->join();
+			m_heartbeatThread.reset();
 		}
+	}
+	catch (...)
+	{
 	}
 
 	m_bIsStarted = false;
@@ -144,8 +151,7 @@ void COpenWebNetTCP::disconnect()
 	if (m_pStatusSocket != NULL)
 	{
 		_log.Log(LOG_STATUS, "COpenWebNetTCP: disconnect");
-		if (m_pStatusSocket->getState() != csocket::CLOSED)
-			m_pStatusSocket->close();
+		m_pStatusSocket->close();
 		delete m_pStatusSocket;
 		m_pStatusSocket = NULL;
 	}
@@ -371,11 +377,10 @@ csocket* COpenWebNetTCP::connectGwOwn(const char *connectionMode)
 **/
 void COpenWebNetTCP::MonitorFrames()
 {
-	while (!m_stoprequested)
+	while (!IsStopRequested(0))
 	{
 		if (!isStatusSocketConnected())
 		{
-			if (m_stoprequested) break;
 			disconnect();  // disconnet socket if present
 			time_t atime = time(NULL);
 			if ((atime%OPENWEBNET_RETRY_DELAY) == 0)
@@ -404,7 +409,8 @@ void COpenWebNetTCP::MonitorFrames()
 				memset(data, 0, OPENWEBNET_BUFFER_SIZE);
 				int bread = m_pStatusSocket->read(data, OPENWEBNET_BUFFER_SIZE, false);
 
-				if (m_stoprequested) break;
+				if (IsStopRequested(0))
+					break;
 
 				if ((bread == 0) || (bread < 0)) {
 					_log.Log(LOG_ERROR, "COpenWebNetTCP: TCP/IP monitor connection closed!");
@@ -412,7 +418,7 @@ void COpenWebNetTCP::MonitorFrames()
 				}
 				else
 				{
-					boost::lock_guard<boost::mutex> l(readQueueMutex);
+					std::lock_guard<std::mutex> l(readQueueMutex);
 					std::vector<bt_openwebnet> responses;
 					ParseData(data, bread, responses);
 
@@ -427,9 +433,21 @@ void COpenWebNetTCP::MonitorFrames()
 					}
 				}
 			}
-			if (m_stoprequested) break;
+			else
+				sleep_milliseconds(100);
 		}
 	}
+	if (isStatusSocketConnected())
+	{
+		try {
+			disconnect();  // disconnet socket if present
+		}
+		catch (...)
+		{
+			//Don't throw from a Stop command
+		}
+	}
+
 	_log.Log(LOG_STATUS, "COpenWebNetTCP: TCP/IP monitor worker stopped...");
 }
 
@@ -438,13 +456,6 @@ void COpenWebNetTCP::MonitorFrames()
 **/
 void COpenWebNetTCP::UpdateTemp(const int who, const int where, float fval, const int BatteryLevel, const char *devname)
 {
-<<<<<<< HEAD
-    int cnode =  ((who << 12) & 0xF000) | (where & 0xFFF);
-    SendTempSensor(cnode, BatteryLevel, fval, devname);
-}
-
-
-=======
 	//zone are max 99,, every zone can have 8 slave sensor. Slave sensor address. YZZ: y as slave address (1-8) ,zz zone number (1-99)
 	int cnode = ((who << 12) & 0xF000) | (where & 0xFFF);
 	SendTempSensor(cnode, BatteryLevel, fval, devname);
@@ -503,7 +514,6 @@ void COpenWebNetTCP::UpdatePower(const int who, const int where, double fval, co
 	GetValueMeter(who, where, NULL, &energy);
 	SendKwhMeter(who, where, BatteryLevel, fval, (energy / 1000.), devname);
 }
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 
 /**
@@ -564,7 +574,7 @@ void COpenWebNetTCP::UpdateBlinds(const int who, const int where, const int Comm
 		m_HwdID, szIdx, unit, STYPE_BlindsPercentageInverted);
 
 	_tGeneralSwitch gswitch;
-	if (iLevel < 0 && result.empty()) //is a Normal Frame and device is standard 
+	if (iLevel < 0 && result.empty()) //is a Normal Frame and device is standard
 	{
 		gswitch.cmnd = Command;
 		gswitch.level = iLevel;
@@ -576,7 +586,7 @@ void COpenWebNetTCP::UpdateBlinds(const int who, const int where, const int Comm
 		gswitch.seqnbr = 0;
 		sDecodeRXMessage(this, (const unsigned char *)&gswitch, devname, BatteryLevel);
 	}
-	if (iLevel >= 0 && !result.empty()) //is a Meseaure Frame (percentual) and device is Advanced 
+	if (iLevel >= 0 && !result.empty()) //is a Meseaure Frame (percentual) and device is Advanced
 	{
 		gswitch.cmnd = gswitch_sSetLevel;
 		gswitch.level = iLevel;
@@ -617,7 +627,7 @@ void COpenWebNetTCP::UpdateAlarm(const int who, const int where, const int Comma
 	if (result.empty())
 	{
 		m_sql.UpdateValue(m_HwdID, szIdx, unit, pTypeGeneral, sTypeAlert, 12, 255, Command, sCommand, strdev);
-		m_sql.safe_query("UPDATE DeviceStatus SET Name='%s' WHERE (HardwareID==%d) AND (DeviceID=='%s') AND (Unit==%d)", devname, m_HwdID, szIdx, unit);//can't update from devname ???    
+		m_sql.safe_query("UPDATE DeviceStatus SET Name='%s' WHERE (HardwareID==%d) AND (DeviceID=='%s') AND (Unit==%d)", devname, m_HwdID, szIdx, unit);//can't update from devname ???
 		return;
 	}
 
@@ -688,17 +698,6 @@ void COpenWebNetTCP::UpdateSwitch(const int who, const int where, const int what
 		m_HwdID, szIdx, unit);
 	if (!result.empty())
 	{
-<<<<<<< HEAD
-        //check if we have a change, if not do not update it
-	    int nvalue = atoi(result[0][0].c_str());
-
-	    if ((what == 0) && (nvalue == gswitch_sOff)) return; // Already 0% OFF
-	    if ((what == 1) && (nvalue == gswitch_sOn)) return; // Already ON
-	    int slevel = atoi(result[0][1].c_str());
-        if ((what > 1) && (nvalue != gswitch_sOff) && (slevel == level)) return; // Already ON/LEVEL at x%
-    }
-	else if (who == WHO_CEN_PLUS_DRY_CONTACT_IR_DETECTION)
-=======
 		//check if we have a change, if not do not update it
 		int nvalue = atoi(result[0][0].c_str());
 
@@ -708,7 +707,6 @@ void COpenWebNetTCP::UpdateSwitch(const int who, const int where, const int what
 		if ((what > 1) && (nvalue != gswitch_sOff) && (slevel == level)) return; // Already ON/LEVEL at x%
 	}
 	else if ((who == WHO_CEN_PLUS_DRY_CONTACT_IR_DETECTION) || (who == (WHO_TEMPERATURE_CONTROL + 500)) || (who == (WHO_TEMPERATURE_CONTROL + 600)))
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	{
 		// Special insert to set SwitchType = STYPE_Contact
 		// so we have a correct contact device
@@ -799,7 +797,7 @@ void COpenWebNetTCP::UpdateDeviceValue(std::vector<bt_openwebnet>::iterator iter
 			_log.Log(LOG_ERROR, "COpenWebNetTCP: Who=%s frame error!", who.c_str());
 			return;
 		}
-		if (iter->IsMeasureFrame()) // Advanced motor actuator (percentual) *#2*19*10*10*65*000*0##    
+		if (iter->IsMeasureFrame()) // Advanced motor actuator (percentual) *#2*19*10*10*65*000*0##
 		{
 			std::string level = iter->Extract_value(1);
 			iLevel = atoi(level.c_str());
@@ -902,26 +900,9 @@ void COpenWebNetTCP::UpdateDeviceValue(std::vector<bt_openwebnet>::iterator iter
 		case TEMPERATURE_CONTROL_DIMENSION_TEMPERATURE:
 			UpdateTemp(WHO_TEMPERATURE_CONTROL, atoi(where.c_str()), static_cast<float>(atof(value.c_str()) / 10.), 255, devname.c_str());
 			break;
-<<<<<<< HEAD
-		case WHO_TEMPERATURE_CONTROL:
-			if (!iter->IsMeasureFrame())
-			{
-				_log.Log(LOG_ERROR, "COpenWebNetTCP: Who=%s frame error!", who.c_str());
-				return;
-			}             // 4
-			if (atoi(dimension.c_str()) == 0)
-			{
-				devname = OPENWEBNET_TEMPERATURE;
-				devname += " " + where;
-				UpdateTemp(WHO_TEMPERATURE_CONTROL, atoi(where.c_str()), static_cast<float>(atof(value.c_str()) / 10.), 255, devname.c_str());
-			}
-			else
-				_log.Log(LOG_STATUS, "COpenWebNetTCP: who=%s, where=%s, dimension=%s not yet supported", who.c_str(), where.c_str(), dimension.c_str());
-=======
 		case TEMPERATURE_CONTROL_DIMENSION_VALVES_STATUS:
 			devname += " Valves";
 			UpdateSwitch(WHO_TEMPERATURE_CONTROL + 600, atoi(where.c_str()), atoi(value.c_str()), atoi(sInterface.c_str()), 255, devname.c_str(), sSwitchContactT1);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			break;
 		case TEMPERATURE_CONTROL_DIMENSION_ACTUATOR_STATUS:
 			devname += " Actuator";
@@ -954,7 +935,7 @@ void COpenWebNetTCP::UpdateDeviceValue(std::vector<bt_openwebnet>::iterator iter
 			break;
 		case 1:         //active
 			//_log.Log(LOG_STATUS, "COpenWebNetTCP: Alarm Active");
-			iWhere = 0xff; // force where to 0xff because not exist	
+			iWhere = 0xff; // force where to 0xff because not exist
 			devname = OPENWEBNET_BURGLAR_ALARM_SYS_STATUS;
 			sCommand = "Active";
 			UpdateAlarm(WHO_BURGLAR_ALARM, iWhere, 1, sCommand.c_str(), atoi(sInterface.c_str()), 255, devname.c_str());
@@ -1135,26 +1116,6 @@ void COpenWebNetTCP::UpdateDeviceValue(std::vector<bt_openwebnet>::iterator iter
 			//pTypeGeneralSwitch, sSwitchContactT1
 			UpdateSwitch(WHO_CEN_PLUS_DRY_CONTACT_IR_DETECTION, iWhere, iAppValue, atoi(sInterface.c_str()), 255, devname.c_str(), sSwitchContactT1);
 			break;
-<<<<<<< HEAD
-		case WHO_SCENARIO:                              // 0
-		case WHO_LOAD_CONTROL:                          // 3
-		case WHO_DOOR_ENTRY_SYSTEM:                     // 6
-		case WHO_MULTIMEDIA:                            // 7
-		case WHO_GATEWAY_INTERFACES_MANAGEMENT:         // 13
-		case WHO_LIGHT_SHUTTER_ACTUATOR_LOCK:           // 14
-		case WHO_SCENARIO_SCHEDULER_SWITCH:             // 15
-		case WHO_AUDIO:                                 // 16
-		case WHO_SCENARIO_PROGRAMMING:                  // 17
-		case WHO_ENERGY_MANAGEMENT:                     // 18
-		case WHO_LIHGTING_MANAGEMENT:                   // 24
-		case WHO_DIAGNOSTIC:                            // 1000
-		case WHO_AUTOMATIC_DIAGNOSTIC:                  // 1001
-		case WHO_THERMOREGULATION_DIAGNOSTIC_FAILURES:  // 1004
-		case WHO_DEVICE_DIAGNOSTIC:                     // 1013
-			_log.Log(LOG_ERROR, "COpenWebNetTCP: Who=%s not yet supported!", who.c_str());
-			return;
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		default:
 			_log.Log(LOG_ERROR, "COpenWebNetTCP: What=%s is not correct for who=%s", what.c_str(), who.c_str());
 			return;
@@ -1236,88 +1197,6 @@ bool COpenWebNetTCP::WriteToHardware(const char *pdata, const unsigned char leng
 
 
 	// Test packet type
-<<<<<<< HEAD
-	switch(packettype){
-        case pTypeGeneralSwitch:
-            // Test general switch subtype
-            switch(subtype){
-                case sSwitchBlindsT1:
-                    //Blinds/Window command
-                    who = WHO_AUTOMATION;
-                	where = (int)(pCmd->id & 0xFFFF);
-
-                    if (pCmd->cmnd == gswitch_sOff)
-                    {
-                        what = AUTOMATION_WHAT_UP;
-                    }
-                    else if (pCmd->cmnd == gswitch_sOn)
-                    {
-                        what = AUTOMATION_WHAT_DOWN;
-                    }
-                    else if (pCmd->cmnd == gswitch_sStop)
-                    {
-                        what = AUTOMATION_WHAT_STOP;
-                    }
-                    break;
-                case sSwitchLightT1:
-                    //Light/Switch command
-                    who = WHO_LIGHTING;
-                	where = (int)(pCmd->id & 0xFFFF);
-
-                    if (pCmd->cmnd == gswitch_sOff)
-                    {
-                        what = LIGHT_WHAT_OFF;
-                    }
-                    else if (pCmd->cmnd == gswitch_sOn)
-                    {
-                        what = LIGHT_WHAT_ON;
-                    }
-                    else if (pCmd->cmnd == gswitch_sSetLevel)
-                    {
-                        // setting level of dimmer
-                        if (pCmd->level != 0)
-                        {
-                            if (pCmd->level < 20) pCmd->level = 20; // minimum value after 0
-                            what = int((pCmd->level + 5)/10);
-                        }
-                        else
-                        {
-                            what = LIGHT_WHAT_OFF;
-                        }
-                    }
-                    break;
-                case sSwitchAuxiliaryT1:
-                    //Auxiliary command
-                    who = WHO_AUXILIARY;
-                	where = (int)(pCmd->id & 0xFFFF);
-
-                    if (pCmd->cmnd == gswitch_sOff)
-                    {
-                        what = AUXILIARY_WHAT_OFF;
-                    }
-                    else if (pCmd->cmnd == gswitch_sOn)
-                    {
-                        what = AUXILIARY_WHAT_ON;
-                    }
-                    break;
-                default:
-                    break;
-            }
-            break;
-		case sSwitchContactT1:
-			// Dry Contact / IR Detection
-			return(false); // can't write a contact
-        case pTypeThermostat:
-            // Test Thermostat subtype
-            switch(subtype){
-                case sTypeThermSetpoint:
-                case sTypeThermTemperature:
-                    break;
-                default:
-                    break;
-            }
-            break;
-=======
 	switch (packettype) {
 	case pTypeGeneralSwitch:
 		// Test general switch subtype
@@ -1332,10 +1211,10 @@ bool COpenWebNetTCP::WriteToHardware(const char *pdata, const unsigned char leng
 			ID4 = (unsigned char)(where & 0xFF);
 			sprintf(szIdx, "%02X%02X%02X%02X", ID1, ID2, ID3, ID4);
 
-			result = m_sql.safe_query("SELECT nValue FROM DeviceStatus WHERE (HardwareID==%d)  AND (DeviceID=='%s') AND (SwitchType==%d)",  //*******is there a better method for get 
+			result = m_sql.safe_query("SELECT nValue FROM DeviceStatus WHERE (HardwareID==%d)  AND (DeviceID=='%s') AND (SwitchType==%d)",  //*******is there a better method for get
 				m_HwdID, szIdx, STYPE_BlindsPercentageInverted);																																					//*******SUBtype (STYPE_BlindsPercentageInverted) ??
 
-			if (result.empty())// from a normal button  
+			if (result.empty())// from a normal button
 			{
 				if (pCmd->cmnd == gswitch_sOff)
 				{
@@ -1431,7 +1310,6 @@ bool COpenWebNetTCP::WriteToHardware(const char *pdata, const unsigned char leng
 			break;
 		}
 		break;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 	default:
 		_log.Log(LOG_STATUS, "COpenWebNetTCP unknown command: packettype=%d subtype=%d", packettype, subtype);
@@ -1487,7 +1365,7 @@ bool COpenWebNetTCP::WriteToHardware(const char *pdata, const unsigned char leng
 	{
 		std::vector<bt_openwebnet> responses;
 		bt_openwebnet request;
-		
+
 		std::stringstream whoStr;
 		whoStr << who;
 		std::string sWho = whoStr.str();
@@ -1509,10 +1387,6 @@ bool COpenWebNetTCP::WriteToHardware(const char *pdata, const unsigned char leng
 
 		std::string lev = "";
 		std::string when = "";
-<<<<<<< HEAD
-		
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		request.CreateMsgOpen(sWho, sWhat, sWhere, lev, sInterface, when);
 		if (sendCommand(request, responses))
 		{
@@ -1521,8 +1395,6 @@ bool COpenWebNetTCP::WriteToHardware(const char *pdata, const unsigned char leng
 	}
 
 	return true;
-<<<<<<< HEAD
-=======
 }
 
 
@@ -1566,8 +1438,9 @@ bool COpenWebNetTCP::SetSetpoint(const int idx, const float temp)
 	}
 
 	return false;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 }
+
+
 
 /**
    Send OpenWebNet command to device
@@ -1603,7 +1476,7 @@ bool COpenWebNetTCP::sendCommand(bt_openwebnet& command, std::vector<bt_openwebn
 			_log.Log(LOG_STATUS, "COpenWebNetTCP: sent=%s received=%s", command.frame_open.c_str(), responseBuffer);
 		}
 
-		boost::lock_guard<boost::mutex> l(readQueueMutex);
+		std::lock_guard<std::mutex> l(readQueueMutex);
 		ret = ParseData(responseBuffer, read, response);
 	}
 	else
@@ -1817,7 +1690,7 @@ bool COpenWebNetTCP::ParseData(char* data, int length, std::vector<bt_openwebnet
 
 void COpenWebNetTCP::Do_Work()
 {
-	while (!m_stoprequested)
+	while (!IsStopRequested(OPENWEBNET_HEARTBEAT_DELAY*1000))
 	{
 		if (isStatusSocketConnected() && mask_request_status)
 		{
@@ -1832,8 +1705,6 @@ void COpenWebNetTCP::Do_Work()
 				_log.Log(LOG_STATUS, "COpenWebNetTCP: HEARTBEAT set scan devices ...");
 			mask_request_status = 0x1; // force scan devices
 		}
-
-		sleep_seconds(OPENWEBNET_HEARTBEAT_DELAY);
 
 		if ((mytime(NULL) - LastScanTimeEnergy) > SCAN_TIME_REQ_AUTO_UPDATE_POWER)
 		{
@@ -1870,51 +1741,6 @@ bool COpenWebNetTCP::FindDevice(int who, int where, int iInterface, int* used)
 
 	char szIdx[10];
 	switch (who) {
-<<<<<<< HEAD
-        case WHO_LIGHTING:                              // 1
-			devType = pTypeGeneralSwitch;
-			subType = sSwitchLightT1;
-			sprintf(szIdx, "%02X%02X%02X%02X", ID1, ID2, ID3, ID4);
-            break;
-		case WHO_AUTOMATION:                            // 2
-			devType = pTypeGeneralSwitch;
-            subType = sSwitchBlindsT1;
-            sprintf(szIdx, "%02X%02X%02X%02X", ID1, ID2, ID3, ID4);
-            break;
-        case WHO_TEMPERATURE_CONTROL:                   // 4
-            //devType = pTypeGeneral;
-            //subType = sTypeTemperature;
-            //subUnit = where;
-            //printf(szIdx, "%02X%02X", who, where);
-            //break;
-			return true; // device always present
-        case WHO_AUXILIARY:                             // 9
-			devType = pTypeGeneralSwitch;
-			subType = sSwitchAuxiliaryT1;
-			sprintf(szIdx, "%02X%02X%02X%02X", ID1, ID2, ID3, ID4);
-            break;
-		case WHO_CEN_PLUS_DRY_CONTACT_IR_DETECTION:     // 25
-			devType = pTypeGeneralSwitch;
-			subType = sSwitchContactT1;
-			sprintf(szIdx, "%02X%02X%02X%02X", ID1, ID2, ID3, ID4);
-			break;
-        case WHO_SCENARIO:                              // 0
-		case WHO_LOAD_CONTROL:                          // 3
-		case WHO_BURGLAR_ALARM:                         // 5
-		case WHO_DOOR_ENTRY_SYSTEM:                     // 6
-		case WHO_MULTIMEDIA:                            // 7
-		case WHO_GATEWAY_INTERFACES_MANAGEMENT:         // 13
-		case WHO_LIGHT_SHUTTER_ACTUATOR_LOCK:           // 14
-		case WHO_SCENARIO_SCHEDULER_SWITCH:             // 15
-		case WHO_AUDIO:                                 // 16
-		case WHO_SCENARIO_PROGRAMMING:                  // 17
-		case WHO_ENERGY_MANAGEMENT:                     // 18
-		case WHO_LIHGTING_MANAGEMENT:                   // 24
-		case WHO_DIAGNOSTIC:                            // 1000
-		case WHO_AUTOMATIC_DIAGNOSTIC:                  // 1001
-		case WHO_THERMOREGULATION_DIAGNOSTIC_FAILURES:  // 1004
-		case WHO_DEVICE_DIAGNOSTIC:                     // 1013
-=======
 	case WHO_LIGHTING:                              // 1
 		devType = pTypeGeneralSwitch;
 		subType = sSwitchLightT1;
@@ -1958,7 +1784,6 @@ bool COpenWebNetTCP::FindDevice(int who, int where, int iInterface, int* used)
 	case WHO_AUTOMATIC_DIAGNOSTIC:                  // 1001
 	case WHO_THERMOREGULATION_DIAGNOSTIC_FAILURES:  // 1004
 	case WHO_DEVICE_DIAGNOSTIC:                     // 1013
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	default:
 		return false;
 	}

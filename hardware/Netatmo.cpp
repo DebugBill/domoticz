@@ -68,7 +68,6 @@ CNetatmo::CNetatmo(const int ID, const std::string& username, const std::string&
 
 	m_ActHome = 0;
 
-	m_stoprequested = false;
 	m_bPollThermostat = true;
 	m_bPollWeatherData = true;
 	m_bFirstTimeThermostat = true;
@@ -103,20 +102,24 @@ void CNetatmo::Init()
 
 bool CNetatmo::StartHardware()
 {
+	RequestStart();
+
 	Init();
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CNetatmo::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>(&CNetatmo::Do_Work, this);
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted = true;
 	sOnConnected(this);
-	return (m_thread != NULL);
+	return (m_thread != nullptr);
 }
 
 bool CNetatmo::StopHardware()
 {
-	if (m_thread != NULL)
+	if (m_thread)
 	{
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
+		m_thread.reset();
 	}
 	m_bIsStarted = false;
 	return true;
@@ -128,11 +131,8 @@ void CNetatmo::Do_Work()
 	bool bFirstTimeWS = true;
 	bool bFirstTimeTH = true;
 	_log.Log(LOG_STATUS, "Netatmo: Worker started...");
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
-		if (m_stoprequested)
-			break;
 		sec_counter++;
 		if (sec_counter % 12 == 0) {
 			m_LastHeartbeat = mytime(NULL);
@@ -161,7 +161,7 @@ void CNetatmo::Do_Work()
 				if (m_bPollThermostat)
 				{
 					//Thermostat data is updated every hour
-					if ((sec_counter % 3600 == 0) || (bFirstTimeTH))
+					if ((sec_counter % 600 == 0) || (bFirstTimeTH))
 					{
 						bFirstTimeTH = false;
 						GetThermostatDetails();
@@ -385,63 +385,6 @@ void CNetatmo::StoreRefreshToken()
 	m_sql.safe_query("UPDATE Hardware SET Extra='%q' WHERE (ID == %d)", m_refreshToken.c_str(), m_HwdID);
 }
 
-<<<<<<< HEAD
-int CNetatmo::GetBatteryLevel(const std::string &ModuleType, const int battery_vp)
-{
-	int batValue = 255;
-	if (battery_vp == 0)
-		return batValue; //no battery
-
-	bool bIsIndoorSensor = ((ModuleType == "NAMain") || (ModuleType == "NAModule4"));
-	bool bIsOutdoorSensor = ((ModuleType == "NAModule1") || (ModuleType == "NAModule3"));
-	bool bIsWindGaugeSensor = (ModuleType == "NAModule2");
-	bool bIsThermostatSensor = (ModuleType == "NATherm1");
-
-	if (bIsIndoorSensor)
-	{
-		/* Battery range: 6000 ... 4200
-		5640 full
-		5280 high
-		4920 medium
-		4560 low
-		Below 4560: very low */
-		if (battery_vp <= 4560)
-			batValue = 0;
-	}
-	else if (bIsOutdoorSensor)
-	{
-		/*Battery range : 6000 ... 3600 * /
-		5500 full
-		5000 high
-		4500 medium
-		4000 low
-		below 4000: very low */
-		if (battery_vp <= 4000)
-			batValue = 0;
-	}
-	else if (bIsWindGaugeSensor)
-	{
-		/* Battery range: 6000 ... 3950
-		5590 full
-		5180 high
-		4770 medium
-		4360 low
-		below 4360: very low*/
-		if (battery_vp <= 4360)
-			batValue = 0;
-	}
-	else if (bIsThermostatSensor)
-	{
-		/* Battery range: 4500 ... 3000
-		4100 full
-		3600 high
-		3300 medium
-		3000 low
-		below 3000: very low */
-		if (battery_vp <= 3000)
-			batValue = 0;
-	}
-=======
 int CNetatmo::GetBatteryLevel(const std::string &ModuleType, int battery_percent)
 {
 	int batValue = 255;
@@ -472,11 +415,10 @@ int CNetatmo::GetBatteryLevel(const std::string &ModuleType, int battery_percent
 		batValue = 100 - int((100.0f / 1100.0f)*float(batValue));
 	}
 
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	return batValue;
 }
 
-bool CNetatmo::ParseDashboard(const Json::Value &root, const int DevIdx, const int ID, const std::string &name, const std::string &ModuleType, const int battery_vp)
+bool CNetatmo::ParseDashboard(const Json::Value &root, const int DevIdx, const int ID, const std::string &name, const std::string &ModuleType, const int battery_percent, const int rssiLevel)
 {
 	bool bHaveTemp = false;
 	bool bHaveHum = false;
@@ -499,7 +441,42 @@ bool CNetatmo::ParseDashboard(const Json::Value &root, const int DevIdx, const i
 	float wind_strength = 0;
 	float wind_gust = 0;
 
-	int batValue = GetBatteryLevel(ModuleType, battery_vp);
+	int batValue = GetBatteryLevel(ModuleType, battery_percent);
+
+	// check for Netatmo cloud data timeout, except if we deal with a thermostat
+	if (ModuleType != "NATherm1")
+	{
+		std::time_t tNetatmoLastUpdate = 0;
+		std::time_t tNow = time(NULL);
+
+		// initialize the relevant device flag
+		if ( m_bNetatmoRefreshed.find(ID) == m_bNetatmoRefreshed.end() )
+		{
+			m_bNetatmoRefreshed[ID] = true;
+		}
+		// Check when dashboard data was last updated
+		if ( !root["time_utc"].empty() )
+		{
+			tNetatmoLastUpdate = root["time_utc"].asUInt();
+		}
+		_log.Debug(DEBUG_HARDWARE, "Netatmo: Module [%s] last update = %s", name.c_str(), ctime(&tNetatmoLastUpdate));
+		// check if Netatmo data was updated in the past 10 mins (+1 min for sync time lags)... if not means sensors failed to send to cloud
+		if (tNetatmoLastUpdate > (tNow - 660))
+		{
+			if (!m_bNetatmoRefreshed[ID])
+			{
+				_log.Log(LOG_STATUS, "Netatmo: cloud data for module [%s] is now updated again", name.c_str());
+				m_bNetatmoRefreshed[ID] = true;
+			}
+		}
+		else
+		{
+			if (m_bNetatmoRefreshed[ID])
+				_log.Log(LOG_ERROR, "Netatmo: cloud data for module [%s] no longer updated (module possibly disconnected)", name.c_str());
+			m_bNetatmoRefreshed[ID] = false;
+			return false;
+		}
+	}
 
 	if (!root["Temperature"].empty())
 	{
@@ -571,42 +548,16 @@ bool CNetatmo::ParseDashboard(const Json::Value &root, const int DevIdx, const i
 
 	if (bHaveTemp && bHaveHum && bHaveBaro)
 	{
-		int nforecast = CalculateBaroForecast(baro);
-		if (temp < 0)
-		{
-			if (
-				(nforecast == wsbaroforcast_rain) ||
-				(nforecast == wsbaroforcast_heavy_rain)
-				)
-			{
-				nforecast = wsbaroforcast_snow;
-			}
-		}
-		if (nforecast == wsbaroforcast_unknown)
-		{
-			nforecast = wsbaroforcast_some_clouds;
-			float pressure = baro;
-			if (pressure <= 980)
-				nforecast = wsbaroforcast_heavy_rain;
-			else if (pressure <= 995)
-			{
-				if (temp > 1)
-					nforecast = wsbaroforcast_rain;
-				else
-					nforecast = wsbaroforcast_snow;
-			}
-			else if (pressure >= 1029)
-				nforecast = wsbaroforcast_sunny;
-		}
-		SendTempHumBaroSensorFloat(ID, batValue, temp, hum, baro, nforecast, name);
+		int nforecast = m_forecast_calculators[ID].CalculateBaroForecast(temp, baro);
+		SendTempHumBaroSensorFloat(ID, batValue, temp, hum, baro, nforecast, name, rssiLevel);
 	}
 	else if (bHaveTemp && bHaveHum)
 	{
-		SendTempHumSensor(ID, batValue, temp, hum, name);
+		SendTempHumSensor(ID, batValue, temp, hum, name, rssiLevel);
 	}
 	else if (bHaveTemp)
 	{
-		SendTempSensor(ID, batValue, temp, name);
+		SendTempSensor(ID, batValue, temp, name, rssiLevel);
 	}
 
 	if (bHaveSetpoint)
@@ -641,7 +592,7 @@ bool CNetatmo::ParseDashboard(const Json::Value &root, const int DevIdx, const i
 			m_RainOffset[ID] += m_OldRainCounter[ID];
 		}
 		m_OldRainCounter[ID] = rain;
-		SendRainSensor(ID, batValue, m_RainOffset[ID] + m_OldRainCounter[ID], name);
+		SendRainSensor(ID, batValue, m_RainOffset[ID] + m_OldRainCounter[ID], name, rssiLevel);
 	}
 
 	if (bHaveCO2)
@@ -656,7 +607,7 @@ bool CNetatmo::ParseDashboard(const Json::Value &root, const int DevIdx, const i
 
 	if (bHaveWind)
 	{
-		SendWind(ID, batValue, wind_angle, wind_strength, wind_gust, 0, 0, false, name);
+		SendWind(ID, batValue, wind_angle, wind_strength, wind_gust, 0, 0, false, false, name, rssiLevel);
 	}
 	return true;
 }
@@ -976,13 +927,11 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 							std::string mname = module["module_name"].asString();
 							if (mname.empty())
 								mname = nDevice.ModuleName;
-							int mbattery_vp = 0;
-							if (module["battery_vp"].empty() == false)
+							int mbattery_percent = 0;
+							if (!module["battery_percent"].empty())
 							{
-								mbattery_vp = module["battery_vp"].asInt();
+								mbattery_percent = module["battery_percent"].asInt();
 							}
-<<<<<<< HEAD
-=======
 							int mrf_status = 0;
 							if (!module["rf_status"].empty())
 							{
@@ -992,15 +941,14 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 									mrf_status = 10;
 								}
 							}
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 							int crcId = Crc32(0, (const unsigned char *)mid.c_str(), mid.length());
 							if (!module["dashboard_data"].empty())
 							{
-								ParseDashboard(module["dashboard_data"], iDevIndex, crcId, mname, mtype, mbattery_vp);
+								ParseDashboard(module["dashboard_data"], iDevIndex, crcId, mname, mtype, mbattery_percent, mrf_status);
 							}
 							else if (!module["measured"].empty())
 							{
-								ParseDashboard(module["measured"], iDevIndex, crcId, mname, mtype, mbattery_vp);
+								ParseDashboard(module["measured"], iDevIndex, crcId, mname, mtype, mbattery_percent, mrf_status);
 								if (mtype == "NATherm1")
 								{
 									m_thermostatDeviceID[iDevIndex] = nDevice.ID;
@@ -1018,7 +966,7 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 										//Check if setpoint was just set, and if yes, overrule the previous setpoint
 										if (!module["setpoint"]["setpoint_temp"].empty())
 										{
-											ParseDashboard(module["setpoint"], iDevIndex, crcId, mname, mtype, mbattery_vp);
+											ParseDashboard(module["setpoint"], iDevIndex, crcId, mname, mtype, mbattery_percent, mrf_status);
 										}
 									}
 								}
@@ -1031,13 +979,11 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 			}
 			_netatmo_devices.push_back(nDevice);
 
-			int battery_vp = 0;
-			if (device["battery_vp"].empty() == false)
+			int battery_percent = 0;
+			if (!device["battery_percent"].empty())
 			{
-				battery_vp = device["battery_vp"].asInt();
+				battery_percent = device["battery_percent"].asInt();
 			}
-<<<<<<< HEAD
-=======
 			int wifi_status = 0;
 			if (!device["wifi_status"].empty())
 			{
@@ -1047,11 +993,10 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 					wifi_status = 10;
 				}
 			}
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			int crcId = Crc32(0, (const unsigned char *)id.c_str(), id.length());
 			if (!device["dashboard_data"].empty())
 			{
-				ParseDashboard(device["dashboard_data"], iDevIndex, crcId, name, type, battery_vp);
+				ParseDashboard(device["dashboard_data"], iDevIndex, crcId, name, type, battery_percent, wifi_status);
 			}
 		}
 		iDevIndex++;
@@ -1121,13 +1066,11 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 			continue; //handled above
 		}
 
-		int battery_vp = 0;
-		if (!module["battery_vp"].empty())
+		int battery_percent = 0;
+		if (!module["battery_percent"].empty())
 		{
-			battery_vp = module["battery_vp"].asInt();
+			battery_percent = module["battery_percent"].asInt();
 		}
-<<<<<<< HEAD
-=======
 		int rf_status = 0;
 		if (!module["rf_status"].empty())
 		{
@@ -1137,7 +1080,6 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 				rf_status = 10;
 			}
 		}
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		stdreplace(name, "'", " ");
 
 		//std::set<std::string> dataTypes;
@@ -1148,7 +1090,7 @@ bool CNetatmo::ParseNetatmoGetResponse(const std::string &sResult, const _eNetat
 		int crcId = Crc32(0, (const unsigned char *)id.c_str(), id.length());
 		if (!module["dashboard_data"].empty())
 		{
-			ParseDashboard(module["dashboard_data"], iDevIndex, crcId, name, type, battery_vp);
+			ParseDashboard(module["dashboard_data"], iDevIndex, crcId, name, type, battery_percent, rf_status);
 		}
 	}
 	return (!_netatmo_devices.empty());

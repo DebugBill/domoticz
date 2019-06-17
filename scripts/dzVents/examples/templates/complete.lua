@@ -87,17 +87,10 @@ return {
 
 		The domoticz object holds all information about your Domoticz system. E.g.:
 
-<<<<<<< HEAD
-		local myDevice = domoticz.devices['myDevice']
-		local myVariable = domoticz.variables['myUserVariable']
-		local myGroup = domoticz.groups['myGroup']
-		local myScene = domoticz.sceneds['myScene']
-=======
 		local myDevice = domoticz.devices('myDevice')
 		local myVariable = domoticz.variables('myUserVariable')
 		local myGroup = domoticz.groups('myGroup')
 		local myScene = domoticz.scenes('myScene')
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 
 		The device object is the device that was triggered due to the device in the 'on' section above.
 		]] --

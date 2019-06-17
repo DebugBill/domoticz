@@ -3,7 +3,6 @@
 #include "DomoticzHardware.h"
 
 #include <string>
-#include <vector>
 
 namespace Json
 {
@@ -31,7 +30,7 @@ public:
 		int				refID;
 		std::string		Name;
 	};
-	CLogitechMediaServer(const int ID, const std::string &IPAddress, const int Port, const std::string &User, const std::string &Pwd, const int PollIntervalsec, const int PingTimeoutms);
+	CLogitechMediaServer(const int ID, const std::string &IPAddress, const int Port, const std::string &User, const std::string &Pwd, const int PollIntervalsec);
 	explicit CLogitechMediaServer(const int ID);
 	~CLogitechMediaServer(void);
 	bool WriteToHardware(const char *pdata, const unsigned char length) override;
@@ -39,8 +38,7 @@ public:
 	bool UpdateNode(const int ID, const std::string &Name, const std::string &IPAddress, const int Port);
 	void RemoveNode(const int ID);
 	void RemoveAllNodes();
-	void SetSettings(const int PollIntervalsec, const int PingTimeoutms);
-	void Restart();
+	void SetSettings(const int PollIntervalsec);
 	bool SendCommand(const int ID, const std::string &command, const std::string &param = "");
 	std::vector<LMSPlaylistNode> GetPlaylists();
 	void SendText(const std::string &playerIP, const std::string &subject, const std::string &text, const int duration);
@@ -51,15 +49,9 @@ private:
 	void GetPlayerInfo();
 	void UpsertPlayer(const std::string &Name, const std::string &IPAddress, const std::string &MacAddress);
 
-<<<<<<< HEAD
-	bool StartHardware();
-	bool StopHardware();
-	Json::Value Query(std::string sIP, int iPort, std::string sPostdata);
-=======
 	bool StartHardware() override;
 	bool StopHardware() override;
 	Json::Value Query(const std::string &sIP, const int iPort, const std::string &sPostdata);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	void Do_Node_Work(const LogitechMediaServerNode &Node);
 	void UpdateNodeStatus(const LogitechMediaServerNode &Node, const _eMediaStatus nStatus, const std::string &sStatus, const bool bPingOK);
 	void ReloadNodes();
@@ -71,7 +63,6 @@ private:
 
 	int m_iThreadsRunning;
 	int m_iPollInterval;
-	int m_iPingTimeoutms;
 	std::string	m_IP;
 	int	m_Port;
 	std::string m_User;
@@ -79,7 +70,6 @@ private:
 	bool m_bShowedStartupMessage;
 	int m_iMissedQueries;
 
-	boost::shared_ptr<boost::thread> m_thread;
-	volatile bool m_stoprequested;
-	boost::mutex m_mutex;
+	std::shared_ptr<std::thread> m_thread;
+	std::mutex m_mutex;
 };

@@ -56,12 +56,9 @@ enum _eTaskItemType
 	TITEM_SEND_SMS,
 	TITEM_SEND_NOTIFICATION,
 	TITEM_SET_SETPOINT,
-<<<<<<< HEAD
-=======
 	TITEM_SEND_IFTTT_TRIGGER,
 	TITEM_UPDATEDEVICE,
 	TITEM_CUSTOM_COMMAND,
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 };
 
 struct _tTaskItem
@@ -80,14 +77,9 @@ struct _tTaskItem
 	int _nValue;
 	std::string _sValue;
 	std::string _command;
-<<<<<<< HEAD
-	unsigned char _level;
-	int _Hue;
-=======
 	std::string _sUntil;
 	int _level;
 	_tColor _Color;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	std::string _relatedEvent;
 	timeval _DelayTimeBegin;
 
@@ -181,9 +173,6 @@ struct _tTaskItem
 			getclock(&tItem._DelayTimeBegin);
 		return tItem;
 	}
-<<<<<<< HEAD
-	static _tTaskItem SwitchLightEvent(const float DelayTime, const uint64_t idx, const std::string &Command, const unsigned char Level, const int Hue, const std::string &eventName)
-=======
 	static _tTaskItem SendIFTTTTrigger(const float DelayTime, const std::string &EventID, const std::string &Value1, const std::string &Value2, const std::string &Value3)
 	{
 		_tTaskItem tItem;
@@ -196,7 +185,6 @@ struct _tTaskItem
 		return tItem;
 	}
 	static _tTaskItem SwitchLightEvent(const float DelayTime, const uint64_t idx, const std::string &Command, const int Level, const _tColor Color, const std::string &eventName)
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	{
 		_tTaskItem tItem;
 		tItem._ItemType=TITEM_SWITCHCMD_EVENT;
@@ -268,15 +256,13 @@ struct _tTaskItem
 			getclock(&tItem._DelayTimeBegin);
 		return tItem;
 	}
-	static _tTaskItem SetSetPoint(const float DelayTime, const uint64_t idx, const std::string &varvalue)
+	static _tTaskItem SetSetPoint(const float DelayTime, const uint64_t idx, const std::string &varvalue, const std::string &mode = std::string(), const std::string &until = std::string())
 	{
 		_tTaskItem tItem;
 		tItem._ItemType = TITEM_SET_SETPOINT;
 		tItem._DelayTime = DelayTime;
 		tItem._idx = idx;
 		tItem._sValue = varvalue;
-<<<<<<< HEAD
-=======
 		tItem._command = mode;
 		tItem._sUntil = until;
 
@@ -291,7 +277,6 @@ struct _tTaskItem
 		tItem._DelayTime = DelayTime;
 		tItem._idx = idx;
 		tItem._command = cmdstr;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		if (DelayTime)
 			getclock(&tItem._DelayTimeBegin);
 		return tItem;
@@ -407,6 +392,8 @@ public:
 	void DeleteUserVariable(const std::string &idx);
 	bool CheckUserVariable(const _eUsrVariableType eVartype, const std::string &varvalue, std::string &errorMessage);
 
+	uint64_t CreateDevice(const int HardwareID, const int SensorType, const int SensorSubType, std::string &devname, const unsigned long nid, const std::string &soptions);
+
 	void UpdateDeviceValue(const char * FieldName , std::string &Value , std::string &Idx );
 	void UpdateDeviceValue(const char * FieldName , int Value , std::string &Idx )   ;
 	void UpdateDeviceValue(const char * FieldName , float Value , std::string &Idx ) ;
@@ -414,7 +401,7 @@ public:
 
 	bool GetPreferencesVar(const std::string &Key, double &Value);
 	void UpdatePreferencesVar(const std::string &Key, const double Value);
-	void DeletePreferencesVar(const std::string Key );
+	void DeletePreferencesVar(const std::string &Key);
 	void AllowNewHardwareTimer(const int iTotMinutes);
 
 	bool InsertCustomIconFromZip(const std::string &szZip, std::string &ErrorMessage);
@@ -422,6 +409,7 @@ public:
 
 	std::map<std::string, std::string> BuildDeviceOptions(const std::string & options, const bool decode = true);
 	std::map<std::string, std::string> GetDeviceOptions(const std::string & idx);
+	std::string FormatDeviceOptions(const std::map<std::string, std::string> & optionsMap);
 	bool SetDeviceOptions(const uint64_t idx, const std::map<std::string, std::string> & options);
 
 	float GetCounterDivider(const int metertype, const int dType, const float DefaultValue);
@@ -440,7 +428,7 @@ public:
 	bool		m_bAcceptNewHardware;
 	bool		m_bAllowWidgetOrdering;
 	int			m_ActiveTimerPlan;
-	bool		m_bDisableEventSystem;
+	bool		m_bEnableEventSystem;
 	int			m_ShortLogInterval;
 	bool		m_bLogEventScriptTrigger;
 	bool		m_bDisableDzVentsSystem;

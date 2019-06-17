@@ -173,8 +173,6 @@ void SolarMaxTCP::Do_Work()
 
 		if (m_socket == INVALID_SOCKET)
 		{
-			if (m_stoprequested)
-				break;
 			m_retrycntr++;
 			if (m_retrycntr >= RETRY_DELAY)
 			{

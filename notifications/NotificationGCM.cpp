@@ -33,13 +33,6 @@ bool CNotificationGCM::SendMessageImplementation(
 	//Get All Devices
 	std::vector<std::vector<std::string> > result;
 
-<<<<<<< HEAD
-	std::string szQuery("SELECT SenderID, DeviceType FROM MobileDevices");
-	if ((ExtraData.empty()) || (ExtraData.find("midx_") == std::string::npos))
-		szQuery += " WHERE (Active == 1)";
-	else
-		szQuery += " WHERE (ID == " + ExtraData.substr(5) + ")";
-=======
 	std::string sMidx;
 	std::vector<std::string> vDevices;
 	if (ExtraData.find("midx_") != std::string::npos) {
@@ -55,7 +48,6 @@ bool CNotificationGCM::SendMessageImplementation(
 		szQuery += " WHERE (Active == 1)";
 	}
 
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	result = m_sql.safe_query(szQuery.c_str());
 	if (result.empty())
 		return true;

@@ -80,17 +80,6 @@ public:
 	void EnableLogTimestamps(const bool bEnableTimestamps);
 	bool IsLogTimestampsEnabled();
 
-<<<<<<< HEAD
-	void SetFilterString(std::string &Filter);
-	bool isTraceEnabled();
-	bool TestFilter(const char *cbuffer);
-	void setLogVerboseLevel(int LogLevel);
-	void SetLogPreference(std::string LogFilter, std::string LogFileName, std::string LogLevel);
-	void GetLogPreference();
-	void SetLogDebug(bool debug);
-	bool GetLogDebug();
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	void ForwardErrorsToNotificationSystem(const bool bDoForward);
 
 	std::list<_tLogLineStruct> GetLog(const _eLogLevel level, const time_t lastlogtime = 0);
@@ -108,6 +97,7 @@ private:
 	std::deque<_tLogLineStruct> m_notification_log;
 	bool m_bInSequenceMode;
 	bool m_bEnableLogTimestamps;
+	bool m_bEnableLogThreadIDs;
 	bool m_bEnableErrorsToNotificationSystem;
 	time_t m_LastLogNotificationsSend;
 	std::stringstream m_sequencestring;

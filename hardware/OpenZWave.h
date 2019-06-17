@@ -2,7 +2,6 @@
 
 #ifdef WITH_OPENZWAVE
 
-#include <map>
 #include <string>
 #include <time.h>
 #include "ZWaveBase.h"
@@ -41,9 +40,9 @@ public:
 
 	typedef struct
 	{
-		unsigned int					m_homeId;
-		unsigned char					m_nodeId;
-		bool							m_polled;
+		unsigned int					homeId;
+		unsigned char					nodeId;
+		bool							polled;
 
 		std::string						szType;
 		int								iVersion;
@@ -59,8 +58,9 @@ public:
 		eNodeState						eState;
 
 		bool							HaveUserCodes;
+		bool							IsPlus;
 
-		time_t							m_LastSeen;
+		time_t							LastSeen;
 
 		//Thermostat settings
 		int								tClockDay;
@@ -68,8 +68,8 @@ public:
 		int								tClockMinute;
 		int								tMode;
 		int								tFanMode;
-		std::vector<string>				tModes;
-		std::vector<string>				tFanModes;
+		std::vector<std::string>				tModes;
+		std::vector<std::string>				tFanModes;
 	}NodeInfo;
 
 	COpenZWave(const int ID, const std::string& devname);
@@ -79,7 +79,7 @@ public:
 	bool GetUpdates();
 	void OnZWaveNotification( OpenZWave::Notification const* _notification);
 	void OnZWaveDeviceStatusUpdate(int cs, int err);
-	void EnableDisableNodePolling(int NodeID);
+	void EnableDisableNodePolling(const int nodeID);
 	void SetNodeName(const unsigned int homeID, const int nodeID, const std::string &Name);
 	std::string GetNodeStateString(const unsigned int homeID, const int nodeID);
 	void GetNodeValuesJson(const unsigned int homeID, const int nodeID, Json::Value &root, const int index);
@@ -116,7 +116,7 @@ public:
 	bool NetworkInfo(const int hwID,std::vector< std::vector< int > > &NodeArray);
 	int ListGroupsForNode(const int nodeID);
 	std::string GetGroupName(const int nodeID, const int groupID);
-	int ListAssociatedNodesinGroup(const int nodeID,const int groupID,std::vector< string > &nodesingroup);
+	int ListAssociatedNodesinGroup(const int nodeID,const int groupID,std::vector< std::string > &nodesingroup);
 	bool AddNodeToGroup(const int nodeID,const int groupID, const int addID, const int instance);
 	bool RemoveNodeFromGroup(const int nodeID,const int groupID, const int removeID, const int instance);
 	void GetConfigFile(std::string & filePath, std::string & fileContent);
@@ -128,7 +128,7 @@ public:
 	unsigned char m_controllerNodeId;
 	COpenZWaveControlPanel m_ozwcp;
 private:
-	void NodeQueried(int NodeID);
+	void NodeQueried(const unsigned int homeID, const int nodeID);
 	void DeleteNode(const unsigned int homeID, const int nodeID);
 	void AddNode(const unsigned int homeID, const int nodeID,const NodeInfo *pNode);
 	void EnableNodePoll(const unsigned int homeID, const int nodeID, const int pollTime);

@@ -69,7 +69,6 @@ extern std::string szInternalVoltageCommand;
 extern bool bHasInternalCurrent;
 extern std::string szInternalCurrentCommand;
 
-
 #define round(a) ( int ) ( a + .5 )
 
 CHardwareMonitor::CHardwareMonitor(const int ID)
@@ -358,6 +357,14 @@ void CHardwareMonitor::UpdateSystemSensor(const std::string& qType, const int di
 		float curr = static_cast<float>(atof(devValue.c_str()));
 		SendCurrent(doffset + dindex, curr, devName);
 	}
+#if defined (__linux__)
+	else if (qType == "Process")
+	{
+		doffset = 1500;
+		float usage = static_cast<float>(atof(devValue.c_str()));
+		SendCustomSensor(0, doffset + dindex, 255, usage, devName, "MB");
+	}
+#endif
 	return;
 }
 
@@ -524,6 +531,32 @@ void CHardwareMonitor::RunWMIQuery(const char* qTable, const std::string &qType)
 			(((double) tp.tv_usec) * 0.000001 );
 	}
 
+#if defined(__linux__)
+	float CHardwareMonitor::GetProcessMemUsage()
+	{
+		pid_t pid = getpid();
+		std::stringstream ssPidfile;
+		ssPidfile << "/proc/" << pid << "/status";
+		std::ifstream mfile(ssPidfile.str().c_str());
+		if (!mfile.is_open())
+			return -1;
+		uint32_t VmRSS = -1;
+		uint32_t VmSwap = -1;
+		std::string token;
+		while (mfile >> token)
+		{
+			if (token == "VmRSS:")
+				mfile >> VmRSS;
+			else if (token == "VmSwap:")
+				mfile >> VmSwap;
+
+			// ignore rest of the line
+			mfile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+		}
+		return (VmRSS + VmSwap) / 1000.f;
+	}
+#endif
+
 	float GetMemUsageLinux()
 	{
 #if defined(__FreeBSD__)
@@ -621,6 +654,14 @@ void CHardwareMonitor::RunWMIQuery(const char* qTable, const std::string &qType)
 #endif
 		sprintf(szTmp,"%.2f",memusedpercentage);
 		UpdateSystemSensor("Load", 0, "Memory Usage", szTmp);
+#ifdef __linux__
+		float memProcess = GetProcessMemUsage();
+		if (memProcess != -1)
+		{
+			sprintf(szTmp, "%.2f", memProcess);
+			UpdateSystemSensor("Process", 0, "Process Usage", szTmp);
+		}
+#endif
 	}
 
 	void CHardwareMonitor::FetchUnixCPU()
@@ -738,7 +779,6 @@ void CHardwareMonitor::RunWMIQuery(const char* qTable, const std::string &qType)
 	void CHardwareMonitor::FetchUnixDisk()
 	{
 		//Disk Usage
-		char szTmp[300];
 		std::map<std::string, _tDUsageStruct> _disks;
 		std::map<std::string, std::string> _dmounts_;
 		int returncode = 0;
@@ -785,12 +825,8 @@ void CHardwareMonitor::RunWMIQuery(const char* qTable, const std::string &qType)
 				if (dusage.TotalBlocks > 0)
 				{
 					double UsagedPercentage = (100 / double(dusage.TotalBlocks))*double(dusage.UsedBlocks);
-<<<<<<< HEAD
-					//std::cout << "Disk: " << (*ittDisks).first << ", Mount: " << dusage.MountPoint << ", Used: " << UsagedPercentage << std::endl;
-=======
 					//std::cout << "Disk: " << ittDisks.first << ", Mount: " << dusage.MountPoint << ", Used: " << UsagedPercentage << std::endl;
 					char szTmp[300];
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 					sprintf(szTmp, "%.2f", UsagedPercentage);
 					std::string hddname = "HDD " + dusage.MountPoint;
 					UpdateSystemSensor("Load", 2 + dindex, hddname, szTmp);

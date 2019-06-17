@@ -25,6 +25,7 @@ struct reply
   /// The status of the reply.
   enum status_type
   {
+	switching_protocols = 101,
     ok = 200,
     created = 201,
     accepted = 202,
@@ -68,6 +69,10 @@ struct reply
   static void set_content(reply *rep, InputIterator first, InputIterator last) {
     rep->content.assign(first, last);
   }
+
+  // we use this as an alternative for to_buffers()
+  std::string header_to_string();
+  std::string to_string(const std::string &method);
 
   // reset the reply, so we can re-use it during long-lived connections
   void reset();

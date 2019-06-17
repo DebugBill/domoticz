@@ -5,8 +5,6 @@
 
 namespace Plugins {
 
-	void PythonObjectsInit();
-
 	typedef struct {
 		PyObject_HEAD
 		int			ImageID;
@@ -101,12 +99,9 @@ namespace Plugins {
 		int			Image;
 		PyObject*	Options;
 		int			Used;
-<<<<<<< HEAD
-=======
 		int			TimedOut;
 		PyObject*	Description;
 		PyObject*	Color;
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		CPlugin*	pPlugin;
 	} CDevice;
 
@@ -117,12 +112,14 @@ namespace Plugins {
 	PyObject* CDevice_insert(CDevice* self);
 	PyObject* CDevice_update(CDevice *self, PyObject *args, PyObject *kwds);
 	PyObject* CDevice_delete(CDevice* self);
+	PyObject* CDevice_touch(CDevice* self);
 	PyObject* CDevice_str(CDevice* self);
 
 	static PyMemberDef CDevice_members[] = {
 		{ "ID",	T_INT, offsetof(CDevice, ID), READONLY, "Domoticz internal ID" },
 		{ "Name", T_OBJECT,	offsetof(CDevice, Name), READONLY, "Name" },
 		{ "DeviceID", T_OBJECT,	offsetof(CDevice, DeviceID), READONLY, "External device ID" },
+		{ "Unit",	T_INT, offsetof(CDevice, Unit), READONLY, "Numeric Unit number" },
 		{ "nValue", T_INT, offsetof(CDevice, nValue), READONLY, "Numeric device value" },
 		{ "sValue", T_OBJECT, offsetof(CDevice, sValue), READONLY, "String device value" },
 		{ "SignalLevel", T_INT, offsetof(CDevice, SignalLevel), READONLY, "Numeric signal level" },
@@ -135,12 +132,9 @@ namespace Plugins {
 		{ "LastUpdate", T_OBJECT, offsetof(CDevice, LastUpdate), READONLY, "Last update timestamp" },
 		{ "Options", T_OBJECT, offsetof(CDevice, Options), READONLY, "Device options" },
 		{ "Used", T_INT, offsetof(CDevice, Used), READONLY, "Numeric device Used flag" },
-<<<<<<< HEAD
-=======
 		{ "TimedOut", T_INT, offsetof(CDevice, TimedOut), READONLY, "Is the device marked as timed out" },
 		{ "Description", T_OBJECT, offsetof(CDevice, Description), READONLY, "Description" },
 		{ "Color", T_OBJECT, offsetof(CDevice, Color), READONLY, "Color JSON dictionary" },
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 		{ NULL }  /* Sentinel */
 	};
 
@@ -149,6 +143,7 @@ namespace Plugins {
 		{ "Create", (PyCFunction)CDevice_insert, METH_NOARGS, "Create the device in Domoticz." },
 		{ "Update", (PyCFunction)CDevice_update, METH_VARARGS | METH_KEYWORDS, "Update the device values in Domoticz." },
 		{ "Delete", (PyCFunction)CDevice_delete, METH_NOARGS, "Delete the device in Domoticz." },
+		{ "Touch", (PyCFunction)CDevice_touch, METH_NOARGS, "Notify Domoticz that device has been seen." },
 		{ NULL }  /* Sentinel */
 	};
 
@@ -209,6 +204,7 @@ namespace Plugins {
 		CPluginTransport*	pTransport;
 		PyObject*			Protocol;
 		CPluginProtocol*	pProtocol;
+		PyObject*			Parent;
 	} CConnection;
 
 	void CConnection_dealloc(CConnection* self);
@@ -229,6 +225,7 @@ namespace Plugins {
 		{ "Address", T_OBJECT,	offsetof(CConnection, Address), READONLY, "Address" },
 		{ "Port", T_OBJECT,	offsetof(CConnection, Port), READONLY, "Port" },
 		{ "Baud", T_INT, offsetof(CConnection, Baud), READONLY, "Baud" },
+		{ "Parent", T_OBJECT, offsetof(CConnection, Parent), READONLY, "Parent connection" },
 		{ NULL }  /* Sentinel */
 	};
 

@@ -487,7 +487,7 @@ std::string CBasePush::DropdownOptionsValue(const uint64_t DeviceRowIdxIn, const
 	return wording;
 }
 
-std::string CBasePush::ProcessSendValue(const std::string &rawsendValue, const int delpos, const int nValue, const int includeUnit, const int metertypein)
+std::string CBasePush::ProcessSendValue(const std::string &rawsendValue, const int delpos, const int nValue, const int includeUnit, const int devType, const int devSubType, const int metertypein)
 {
 	std::string vType = DropdownOptionsValue(m_DeviceRowIdx, delpos);
 	unsigned char tempsign = m_sql.m_tempsign[0];
@@ -506,14 +506,10 @@ std::string CBasePush::ProcessSendValue(const std::string &rawsendValue, const i
 	}
 	else if (vType == "Humidity")
 	{
-<<<<<<< HEAD
-		sprintf(szData,"%d", atoi(rawsendValue.c_str()));
-=======
 		if (devType == pTypeHUM)
 			sprintf(szData, "%d", nValue);
 		else
 			sprintf(szData, "%d", atoi(rawsendValue.c_str()));
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 	}
 	else if (vType == "Humidity Status")
 	{
@@ -603,7 +599,10 @@ std::string CBasePush::ProcessSendValue(const std::string &rawsendValue, const i
 	{
 		strcpy(szData, rawsendValue.c_str());
 	}
-	
+	else if (vType == "Distance")
+	{
+		strcpy(szData, rawsendValue.c_str());
+	}
 	else if (vType == "Status")
 	{
 		sprintf(szData, "%d", nValue);
@@ -891,12 +890,12 @@ namespace http {
 		{
 			root["status"] = "OK";
 			root["title"] = "GetDevicesListOnOff";
-			int ii = 0;
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT ID, Name, Type, SubType FROM DeviceStatus WHERE (Used == 1) ORDER BY Name");
 			if (!result.empty())
 			{
 				std::vector<std::vector<std::string> >::const_iterator itt;
+				int ii = 0;
 				for (itt = result.begin(); itt != result.end(); ++itt)
 				{
 					std::vector<std::string> sd = *itt;

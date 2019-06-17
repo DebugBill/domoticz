@@ -50,7 +50,7 @@ void CHttpPush::OnDeviceReceived(const int m_HwdID, const uint64_t DeviceRowIdx,
 }
 
 void CHttpPush::DoHttpPush()
-{			
+{
 	std::string httpUrl = "";
 	std::string httpData = "";
 	std::string httpHeaders = "";
@@ -117,19 +117,13 @@ void CHttpPush::DoHttpPush()
 			unsigned long long int localTimeUtc = lastUpdate - tzoffset;
 #endif
 
-			char szLocalTime[16];
+			char szLocalTime[21];
 			sprintf(szLocalTime, "%llu", localTime);
-			char szLocalTimeUtc[16];
+			char szLocalTimeUtc[21];
 			sprintf(szLocalTimeUtc, "%llu", localTimeUtc);
-<<<<<<< HEAD
-			char szLocalTimeMs[16];
-			sprintf(szLocalTimeMs, "%llu", localTime*1000);
-			char szLocalTimeUtcMs[16];
-=======
 			char szLocalTimeMs[21];
 			sprintf(szLocalTimeMs, "%llu", localTime * 1000);
 			char szLocalTimeUtcMs[21];
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			sprintf(szLocalTimeUtcMs, "%llu", localTimeUtc * 1000);
 
 			std::string llastUpdate = get_lastUpdate(localTimeUtc);
@@ -153,15 +147,9 @@ void CHttpPush::DoHttpPush()
 			*/
 
 			std::string lunit = getUnit(delpos, metertype);
-<<<<<<< HEAD
-			std::string lType = RFX_Type_Desc(dType,1);
-			std::string lSubType = RFX_Type_SubType_Desc(dType,dSubType);
-			
-=======
 			std::string lType = RFX_Type_Desc(dType, 1);
 			std::string lSubType = RFX_Type_SubType_Desc(dType, dSubType);
 
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			char hostname[256];
 			gethostname(hostname, sizeof(hostname));
 
@@ -171,22 +159,13 @@ void CHttpPush::DoHttpPush()
 				StringSplit(sendValue, ";", strarray);
 				if (int(strarray.size()) >= delpos && delpos > 0)
 				{
-<<<<<<< HEAD
-					std::string rawsendValue = strarray[delpos-1].c_str();
-					sendValue = ProcessSendValue(rawsendValue,delpos,nValue,false,metertype);
-=======
 					std::string rawsendValue = strarray[delpos - 1].c_str();
 					sendValue = ProcessSendValue(rawsendValue, delpos, nValue, false, dType, dSubType, metertype);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 				}
 			}
 			else
 			{
-<<<<<<< HEAD
-				sendValue = ProcessSendValue(sendValue,delpos,nValue,false,metertype);
-=======
 				sendValue = ProcessSendValue(sendValue, delpos, nValue, false, dType, dSubType, metertype);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 			}
 			ltargetDeviceId += "_";
 			ltargetDeviceId += ldelpos;

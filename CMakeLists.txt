@@ -36,12 +36,10 @@ MESSAGE(STATUS "Compiling Revision #${ProjectRevision}")
 MESSAGE(STATUS "###########################")
 
 # The version number.
-set (domoticz_VERSION_MAJOR 3)
+set (domoticz_VERSION_MAJOR 4)
 set (domoticz_VERSION_MINOR 0)
 set (domoticz_VERSION_PATCH ${ProjectRevision})
 
-<<<<<<< HEAD
-=======
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_STANDARD 11)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,7 +51,6 @@ IF(USE_OPENSSL_STATIC)
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
 ENDIF(USE_OPENSSL_STATIC)
 
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 option(USE_BUILTIN_LUA "Use builtin lua library" YES)
 IF(USE_BUILTIN_LUA)
   IF(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -128,6 +125,7 @@ ENDIF(USE_BUILTIN_SQLITE)
 
 option(USE_PYTHON "Use Python for Plugins and Event-Scripts" YES)
 IF(USE_PYTHON)
+  find_package(PythonInterp 3.4)
   find_package(PythonLibs 3.4)
   IF(PYTHONLIBS_FOUND)
     MESSAGE(STATUS "Python3 includes found at: ${PYTHON_INCLUDE_PATH}")
@@ -287,6 +285,7 @@ FIND_PROGRAM(GIT_EXECUTABLE git
 
 
 include_directories(${CMAKE_SOURCE_DIR}/main)
+include_directories(${CMAKE_SOURCE_DIR}/tinyxpath)
 
 # a custom target that is always built
 ADD_CUSTOM_TARGET(revisiontag ALL)
@@ -300,13 +299,16 @@ ADD_CUSTOM_COMMAND(TARGET revisiontag COMMAND ${CMAKE_COMMAND}
 set(
 domoticz_SRCS
 main/stdafx.cpp
+main/BaroForecastCalculator.cpp
 main/CmdLine.cpp
 main/Camera.cpp
 main/domoticz.cpp
+main/dzVents.cpp
 main/EventSystem.cpp
 main/EventsPythonModule.cpp
 main/EventsPythonDevice.cpp
 main/Helper.cpp
+main/IFTTT.cpp
 main/localtime_r.cpp
 main/Logger.cpp
 main/LuaCommon.cpp
@@ -314,8 +316,10 @@ main/LuaHandler.cpp
 main/mainworker.cpp
 main/RFXNames.cpp
 main/Scheduler.cpp
+main/SignalHandler.cpp
 main/SQLHelper.cpp
 main/SunRiseSet.cpp
+main/TrendCalculator.cpp
 main/WebServer.cpp
 main/WebServerHelper.cpp
 main/WindCalculation.cpp
@@ -324,6 +328,7 @@ push/FibaroPush.cpp
 push/GooglePubSubPush.cpp
 push/HttpPush.cpp
 push/InfluxPush.cpp
+push/WebsocketPush.cpp
 httpclient/HTTPClient.cpp
 httpclient/UrlEncode.cpp
 hardware/1Wire.cpp
@@ -338,6 +343,7 @@ hardware/ASyncSerial.cpp
 hardware/ASyncTCP.cpp
 hardware/AtagOne.cpp
 hardware/BleBox.cpp
+hardware/cayenne_lpp/CayenneLPP_Dec.cpp
 hardware/ColorSwitch.cpp
 hardware/Comm5Serial.cpp
 hardware/Comm5SMTCP.cpp
@@ -349,20 +355,28 @@ hardware/CurrentCostMeterTCP.cpp
 hardware/Daikin.cpp
 hardware/DarkSky.cpp
 hardware/DavisLoggerSerial.cpp
-hardware/DenkoviSmartdenLan.cpp
 hardware/DenkoviDevices.cpp
+hardware/DenkoviUSBDevices.cpp
+hardware/DenkoviTCPDevices.cpp
 hardware/DomoticzHardware.cpp
 hardware/DomoticzInternal.cpp
 hardware/DomoticzTCP.cpp
 hardware/Dummy.cpp
 hardware/EcoCompteur.cpp
 hardware/EcoDevices.cpp
+hardware/eHouseTCP.cpp
+hardware/eHouse/EhouseEvents.cpp
+hardware/eHouse/EhouseTcpClient.cpp
+hardware/eHouse/EhouseUdpListener.cpp
 hardware/EnOceanESP2.cpp
 hardware/EnOceanESP3.cpp
+hardware/EnphaseAPI.cpp
 hardware/Ec3kMeterTCP.cpp
 hardware/EvohomeBase.cpp
+hardware/EvohomeRadio.cpp
 hardware/EvohomeScript.cpp
 hardware/EvohomeSerial.cpp
+hardware/EvohomeTCP.cpp
 hardware/EvohomeWeb.cpp
 hardware/ETH8020.cpp
 hardware/FritzboxTCP.cpp
@@ -419,7 +433,6 @@ hardware/PiFace.cpp
 hardware/Pinger.cpp
 hardware/PVOutput_Input.cpp
 hardware/RAVEn.cpp
-hardware/Razberry.cpp
 hardware/Rego6XXSerial.cpp
 hardware/RelayNet.cpp
 hardware/RFLinkBase.cpp
@@ -447,19 +460,23 @@ hardware/TE923Tool.cpp
 hardware/TeleinfoBase.cpp
 hardware/TeleinfoSerial.cpp
 hardware/Tellstick.cpp
+hardware/TellstickFactory.cpp
 hardware/Thermosmart.cpp
 hardware/ToonThermostat.cpp
+hardware/TTNMQTT.cpp
+hardware/USBtin.cpp
+hardware/USBtin_MultiblocV8.cpp
 hardware/VolcraftCO20.cpp
 hardware/Winddelen.cpp
 hardware/WOL.cpp
 hardware/Wunderground.cpp
+hardware/XiaomiGateway.cpp
+hardware/Yeelight.cpp
 hardware/YouLess.cpp
 hardware/ZiBlueBase.cpp
 hardware/ZiBlueSerial.cpp
 hardware/ZiBlueTCP.cpp
 hardware/ZWaveBase.cpp
-hardware/Yeelight.cpp
-hardware/XiaomiGateway.cpp
 hardware/plugins/DelayedLink.cpp
 hardware/plugins/Plugins.cpp
 hardware/plugins/PluginManager.cpp
@@ -467,6 +484,7 @@ hardware/plugins/PluginProtocols.cpp
 hardware/plugins/PluginTransports.cpp
 hardware/plugins/PythonObjects.cpp
 notifications/NotificationBase.cpp
+notifications/NotificationBrowser.cpp
 notifications/NotificationEmail.cpp
 notifications/NotificationGCM.cpp
 notifications/NotificationHelper.cpp
@@ -479,6 +497,7 @@ notifications/NotificationPushover.cpp
 notifications/NotificationPushsafer.cpp
 notifications/NotificationPushalot.cpp
 notifications/NotificationSMS.cpp
+notifications/NotificationTelegram.cpp
 smtpclient/SMTPClient.cpp
 tcpserver/TCPClient.cpp
 tcpserver/TCPServer.cpp
@@ -488,12 +507,14 @@ webserver/connection_manager.cpp
 webserver/cWebem.cpp
 webserver/fastcgi.cpp
 webserver/mime_types.cpp
+webserver/proxycereal.cpp
+webserver/proxyclient.cpp
 webserver/reply.cpp
 webserver/request_handler.cpp
 webserver/request_parser.cpp
 webserver/server.cpp
-webserver/proxycommon.cpp
-webserver/proxyclient.cpp
+webserver/Websockets.cpp
+webserver/WebsocketHandler.cpp
 json/json_reader.cpp
 json/json_value.cpp
 json/json_writer.cpp
@@ -519,9 +540,37 @@ add_executable(domoticz ${domoticz_SRCS})
 # explicitly say that the executable depends on the revisiontag
 add_dependencies(domoticz revisiontag)
 
+INCLUDE(TestBigEndian)
+TEST_BIG_ENDIAN(BIGENDIAN)
+IF(${BIGENDIAN})
+     ADD_DEFINITIONS(-DIS_BIG_ENDIAN)
+ENDIF(${BIGENDIAN})
 
 ## Link libraries
 
+#
+# Find MD5/RMD160/SHA library
+#
+find_package(OpenSSL REQUIRED)
+if(NOT OPENSSL_INCLUDE_DIR)
+	message(SEND_ERROR "Failed to find OpenSSL include files (ssl.h), no HTTPS support")
+endif()
+if(NOT OPENSSL_FOUND)
+  message(SEND_ERROR "Failed to find the OpenSSL library, no HTTPS support")
+  find_library(MD_LIBRARY NAMES md)
+  if(MD_LIBRARY)
+    target_link_libraries(domoticz ${MD_LIBRARY})
+  endif(MD_LIBRARY)
+else()
+  message(STATUS "OPENSSL_LIBRARIES: ${OPENSSL_LIBRARIES}")
+  add_definitions(-DWWW_ENABLE_SSL)
+  include_directories(${OPENSSL_INCLUDE_DIR})
+  target_link_libraries(domoticz ${OPENSSL_LIBRARIES})
+endif()
+
+#
+# Boost
+#
 option(USE_STATIC_BOOST "Build with static BOOST libraries" YES)
 set(Boost_USE_STATIC_LIBS ${USE_STATIC_BOOST})
 set(Boost_USE_MULTITHREADED ON)
@@ -542,8 +591,9 @@ endif(Boost_VERSION VERSION_LESS DOMO_MIN_LIBBOOST_VERSION)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
-
-
+#
+# ZLIB
+#
 option(USE_BUILTIN_ZLIB "Use builtin zlib library" NO)
 if(USE_BUILTIN_ZLIB)
   add_subdirectory (zlib)
@@ -559,8 +609,6 @@ else(USE_BUILTIN_ZLIB)
   endif(ZLIB_FOUND)
 endif(USE_BUILTIN_ZLIB)
 
-<<<<<<< HEAD
-=======
 #
 # MINIZIP
 #
@@ -585,7 +633,6 @@ endif(USE_BUILTIN_MINIZIP)
 #
 # CURL
 #
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 FIND_PACKAGE(CURL)
 IF(CURL_FOUND)
   MESSAGE(STATUS "Curl libraries found at: ${CURL_LIBRARIES}")
@@ -596,22 +643,6 @@ else()
   MESSAGE(FATAL_ERROR "cURL not found on your system, see install.txt how to get them installed. (for example 'sudo apt-get install curl libcurl4-gnutls-dev')")
 ENDIF(CURL_FOUND)
 
-<<<<<<< HEAD
-find_path(LIBUSB_INCLUDE_DIR usb.h
-   HINTS ${PC_LIBUSB_INCLUDEDIR} ${PC_LIBUSB_INCLUDE_DIRS})
-find_library(LIBUSB_LIBRARY NAMES usb
-   HINTS ${PC_LIBUSB_LIBDIR} ${PC_LIBUSB_LIBRARY_DIRS})
-set(LIBUSB_LIBRARIES ${LIBUSB_LIBRARY})
-
-find_package_handle_standard_args(LIBUSB  DEFAULT_MSG  LIBUSB_LIBRARIES LIBUSB_INCLUDE_DIR)
-IF(LIBUSB_FOUND)
-  MESSAGE(STATUS "LIBUSB found at: ${LIBUSB_LIBRARIES}")
-  add_definitions(-DWITH_LIBUSB)
-  target_link_libraries(domoticz ${LIBUSB_LIBRARIES})
-else()
-  MESSAGE(STATUS "==== LibUSB not found, support for TE923/Voltcraft disabled!")
-ENDIF(LIBUSB_FOUND)
-=======
 #
 # USB
 #
@@ -632,26 +663,6 @@ if(WITH_LIBUSB)
     MESSAGE(STATUS "==== LibUSB not found, support for TE923/Voltcraft disabled!")
   ENDIF(LIBUSB_FOUND)
 endif(WITH_LIBUSB)
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
-
-#
-# Find MD5/RMD160/SHA library
-#
-find_package(OpenSSL)
-if(NOT OPENSSL_INCLUDE_DIR)
-  message(SEND_ERROR "Failed to find openssl include files (ssl.h), no HTTPS support")
-endif()
-if(NOT OPENSSL_FOUND)
-  message(SEND_ERROR "Failed to find the openssl library, no HTTPS support")
-  find_library(MD_LIBRARY NAMES md)
-  if(MD_LIBRARY)
-    target_link_libraries(domoticz ${MD_LIBRARY})
-  endif(MD_LIBRARY)
-else()
-  add_definitions(-DWWW_ENABLE_SSL)
-  include_directories(${OPENSSL_INCLUDE_DIR})
-  target_link_libraries(domoticz ${OPENSSL_LIBRARIES})
-endif()
 
 ## support lua popen on Linux platforms
 #IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -659,7 +670,10 @@ endif()
 # add_definitions(-DLUA_USE_LINUX)
 #ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
+#
+# OpenZWave
 # try to find open-zwave, if found, include support
+#
 option(USE_STATIC_OPENZWAVE "Build with static OpenZwave libraries" YES)
 if(USE_STATIC_OPENZWAVE)
   find_library(OpenZWave NAMES libopenzwave.a HINTS "../open-zwave-read-only" "../open-zwave-read-only/cpp/build")
@@ -802,13 +816,3 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/plugins DESTINATION ${CMAKE_INSTAL
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Config DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dzVents DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/updatedomo DESTINATION ${CMAKE_INSTALL_PREFIX} PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ)
-<<<<<<< HEAD
-
-INCLUDE(TestBigEndian)
-
-TEST_BIG_ENDIAN(BIGENDIAN)
-IF(${BIGENDIAN})
-     ADD_DEFINITIONS(-DIS_BIG_ENDIAN)
-ENDIF(${BIGENDIAN})
-=======
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1

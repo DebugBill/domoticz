@@ -104,23 +104,6 @@ define(['app'], function (app) {
 			$("#dialog-editstate").i18n();
 			$("#dialog-editstate").dialog("open");
 		}
-		EvoSetPointColor = function (item, sHeatMode, bkcolor) {
-			if (typeof item.SetPoint != 'undefined') {
-				if (sHeatMode == "HeatingOff" || item.SetPoint == 325.1)//seems to be used whenever the heating is off
-					bkcolor = "#9b9b9b";
-				else if (item.SetPoint >= 25)
-					bkcolor = "#ff0302";
-				else if (item.SetPoint >= 22)
-					bkcolor = "#ff6a2a";
-				else if (item.SetPoint >= 19)
-					bkcolor = "#fe9b2d";
-				else if (item.SetPoint >= 16)
-					bkcolor = "#79bc5c";
-				else //min on temp 5 or greater
-					bkcolor = "#6ca5fd";
-			}
-			return bkcolor;
-		}
 		//FIXME move this to a shared js ...see lightscontroller.js
 		EvoDisplayTextMode = function (strstatus) {
 			if (strstatus == "Auto")//FIXME better way to convert?
@@ -558,17 +541,11 @@ define(['app'], function (app) {
 		};
 
 	}])
-		.directive('dztemperaturewidget', ['$location', function ($location) {
+		.directive('dztemperaturewidget', ['$rootScope', '$location', function ($rootScope,$location) {
 			return {
 				priority: 0,
 				restrict: 'E',
-<<<<<<< HEAD
-				templateUrl: 'views/temperatures/temperatureWidget.html',
-				scope: {},
-				bindToController: {
-=======
 				scope: {
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 					item: '=',
 					tempsign: '=',
 					windsign: '=',
@@ -591,22 +568,27 @@ define(['app'], function (app) {
 						}
 					};
 
-					ctrl.nbackcolor = function () {
-						var nbackcolor = "#D4E1EE";
-						if (item.HaveTimeout == true) {
-							nbackcolor = "#DF2D3A";
+					ctrl.nbackstyle = function () {
+						var backgroundClass = $rootScope.GetItemBackgroundStatus(item);
+						if(ctrl.displaySetPoint()){
+							if (ctrl.sHeatMode() == "HeatingOff" || !ctrl.isSetPointOn())//seems to be used whenever the heating is off
+                                        			backgroundClass="statusEvoSetPointOff";
+                                			else if (item.SetPoint >= 25)
+                                        			backgroundClass="statusEvoSetPoint25";
+                                			else if (item.SetPoint >= 22)
+                                        			backgroundClass="statusEvoSetPoint22";
+                                			else if (item.SetPoint >= 19)
+                                        			backgroundClass="statusEvoSetPoint19";
+                                			else if (item.SetPoint >= 16)
+                                        			backgroundClass="statusEvoSetPoint16";
+                                			else //min on temp 5 or greater
+                                        			backgroundClass="statusEvoSetPointMin";	
 						}
-						else {
-							var BatteryLevel = parseInt(item.BatteryLevel);
-							if (BatteryLevel != 255) {
-								if (BatteryLevel <= 10) {
-									nbackcolor = "#DDDF2D";
-								}
-							}
-						}
-						nbackcolor = EvoSetPointColor(item, ctrl.sHeatMode(), nbackcolor);
-						return { 'background-color': nbackcolor };
+						return backgroundClass;
 					};
+
+					ctrl.displayTrend = $rootScope.DisplayTrend;
+					ctrl.trendState  = $rootScope.TrendState;
 
 					// TODO use angular isDefined
 					ctrl.displayTemp = function () {
@@ -637,7 +619,7 @@ define(['app'], function (app) {
 					ctrl.displayChill = function () {
 						return typeof item.Chill != 'undefined';
 					};
-
+					
 					ctrl.image = function () {
 						if (typeof item.Temp != 'undefined') {
 							return GetTemp48Item(item.Temp);
@@ -718,19 +700,7 @@ define(['app'], function (app) {
 					};
 
 					ctrl.EditState = function (fn) {
-<<<<<<< HEAD
-						return EditState(ctrl.item.idx, escape(ctrl.item.Name), escape(ctrl.item.Description), ctrl.item.State, ctrl.item.Status, ctrl.item.Until, fn);
-					};
-
-					ctrl.ShowLog = function () {
-						$location.url('/Temperature/' + ctrl.item.idx + '/Log');
-					};
-
-					ctrl.ShowNotifications = function () {
-						$location.url('/Temperature/' + ctrl.item.idx + '/Notifications');
-=======
 						return EditState(item.idx, escape(item.Name), escape(item.Description), item.State, item.Status, item.Until, fn);
->>>>>>> 98723b7da9467a49222b8a7ffaae276c5bc075c1
 					};
 
 					$element.i18n();
